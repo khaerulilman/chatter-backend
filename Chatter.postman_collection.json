@@ -1,0 +1,1194 @@
+{
+  "info": {
+    "_postman_id": "chatter-api-collection",
+    "name": "Chatter API",
+    "description": "Complete API collection for Chatter social media backend.\n\nWorkflow:\n1. Register → Verify OTP → Login\n2. Use authenticated endpoints (Posts, Comments, Likes, Users)\n\nVariables are automatically set via test scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints: Register, Verify OTP, and Login.",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate random test email if not set",
+                  "if (!pm.environment.get('test_email') || pm.environment.get('test_email') === '') {",
+                  "    const randomId = Math.random().toString(36).substring(2, 10);",
+                  "    const testEmail = `testuser_${randomId}@example.com`;",
+                  "    pm.environment.set('test_email', testEmail);",
+                  "    console.log('Generated test email:', testEmail);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData.message).to.include('OTP sent successfully');",
+                  "});",
+                  "",
+                  "pm.test('Response contains email', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('email');",
+                  "    // Store email for next requests",
+                  "    pm.environment.set('test_email', jsonData.data.email);",
+                  "});",
+                  "",
+                  "// Handle error cases",
+                  "if (pm.response.code === 409) {",
+                  "    console.log('Email already registered or pending verification');",
+                  "}",
+                  "",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('Missing required fields');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"{{test_email}}\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user. Sends an OTP to the provided email for verification.\n\nRequired fields: name, email, password."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure test_email is set",
+                  "const email = pm.environment.get('test_email');",
+                  "if (!email) {",
+                  "    console.warn('test_email is not set. Please run Register first.');",
+                  "}",
+                  "",
+                  "// Reminder: You need to manually set the OTP from your email",
+                  "console.log('Make sure to set the OTP from the email sent to:', email);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Email verified successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData.message).to.eql('Email berhasil diverifikasi.');",
+                  "});",
+                  "",
+                  "// Handle error cases",
+                  "if (pm.response.code === 400) {",
+                  "    const jsonData = pm.response.json();",
+                  "    console.log('Verification failed:', jsonData.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/verify-otp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "verify-otp"]
+            },
+            "description": "Verify the OTP sent to the user's email during registration.\n\n⚠️ Replace the `otp` value with the actual OTP received via email."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure test_email is available",
+                  "const email = pm.environment.get('test_email');",
+                  "if (!email) {",
+                  "    console.warn('test_email is not set. Please register and verify first.');",
+                  "}",
+                  "",
+                  "console.log('Logging in with email:', email);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has login success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Login Berhasil');",
+                  "});",
+                  "",
+                  "pm.test('Response contains token', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('token');",
+                  "    pm.expect(jsonData.token).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response contains user data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('name');",
+                  "    pm.expect(jsonData.data).to.have.property('email');",
+                  "});",
+                  "",
+                  "// Auto-save token and user data to environment",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('auth_token', jsonData.token);",
+                  "    pm.environment.set('user_id', jsonData.data.id);",
+                  "    pm.environment.set('user_name', jsonData.data.name);",
+                  "    pm.environment.set('test_email', jsonData.data.email);",
+                  "    console.log('Token and user data saved to environment');",
+                  "}",
+                  "",
+                  "// Handle error cases",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Email not found');",
+                  "}",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('Wrong password');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with email and password. Returns a JWT token that is automatically saved to the `auth_token` environment variable for use in authenticated requests."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User management endpoints.",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["console.log('Fetching all users...');"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Users retrieved successfully.');",
+                  "});",
+                  "",
+                  "pm.test('Response data is an array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Store first user's post_id if available for later tests",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.length > 0) {",
+                  "        console.log('Total users:', jsonData.data.length);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"]
+            },
+            "description": "Get all registered users. No authentication required."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure auth token is available",
+                  "const token = pm.environment.get('auth_token');",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "} else {",
+                  "    console.log('Updating profile for authenticated user...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains updated user data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "    pm.expect(jsonData.user).to.have.property('id');",
+                  "    pm.expect(jsonData.user).to.have.property('name');",
+                  "    pm.expect(jsonData.user).to.have.property('email');",
+                  "});",
+                  "",
+                  "pm.test('Sensitive fields are excluded', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user).to.not.have.property('password');",
+                  "    pm.expect(jsonData.user).to.not.have.property('token');",
+                  "});",
+                  "",
+                  "// Update user_name environment variable if name was changed",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('user_name', jsonData.user.name);",
+                  "    console.log('Profile updated successfully');",
+                  "}",
+                  "",
+                  "if (pm.response.code === 401) {",
+                  "    console.log('Unauthorized - please login first');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Updated Name",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "newpassword123",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "profile_picture",
+                  "type": "file",
+                  "src": "",
+                  "disabled": true
+                },
+                {
+                  "key": "header_picture",
+                  "type": "file",
+                  "src": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/edit-profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "edit-profile"]
+            },
+            "description": "Update user profile. Supports updating name, password, profile_picture, and header_picture.\n\n🔒 Requires authentication (Bearer token).\n\nEnable/disable form-data fields as needed. File fields accept image uploads."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "description": "Post CRUD endpoints.",
+      "item": [
+        {
+          "name": "Get All Posts",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["console.log('Fetching posts...');"],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Posts fetched successfully');",
+                  "});",
+                  "",
+                  "pm.test('Response data is an array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Auto-save first post ID for testing",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.length > 0) {",
+                  "        const firstPostId = jsonData.data[0].id || jsonData.data[0].post_id;",
+                  "        pm.environment.set('test_post_id', firstPostId);",
+                  "        console.log('Saved first post ID:', firstPostId);",
+                  "        console.log('Total posts returned:', jsonData.data.length);",
+                  "    } else {",
+                  "        console.log('No posts found');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of posts per page (default: 20)"
+                }
+              ]
+            },
+            "description": "Get all posts with pagination. No authentication required.\n\nQuery parameters:\n- `page`: Page number (default: 1)\n- `limit`: Posts per page (default: 20)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Post By ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const postId = pm.environment.get('test_post_id');",
+                  "if (!postId) {",
+                  "    console.warn('test_post_id is not set. Please run \"Get All Posts\" first or set it manually.');",
+                  "} else {",
+                  "    console.log('Fetching post:', postId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Post retrieved successfully.');",
+                  "});",
+                  "",
+                  "pm.test('Response contains post data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('object');",
+                  "    pm.expect(jsonData.data).to.have.property('content');",
+                  "});",
+                  "",
+                  "// Handle error cases",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('Invalid post ID format');",
+                  "}",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Post not found');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{test_post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{test_post_id}}"]
+            },
+            "description": "Get a specific post by its ID. No authentication required.\n\nUses `test_post_id` environment variable (auto-set by Get All Posts)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Post (Text Only)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "} else {",
+                  "    console.log('Creating text-only post...');",
+                  "}",
+                  "",
+                  "// Generate timestamp for unique content",
+                  "const timestamp = new Date().toISOString();",
+                  "pm.variables.set('post_timestamp', timestamp);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Post created successfully');",
+                  "});",
+                  "",
+                  "pm.test('Response contains post data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.post).to.have.property('id');",
+                  "    pm.expect(jsonData.post).to.have.property('content');",
+                  "    pm.expect(jsonData.post).to.have.property('user_id');",
+                  "});",
+                  "",
+                  "// Save created post ID for subsequent tests",
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('created_post_id', jsonData.post.id);",
+                  "    pm.environment.set('test_post_id', jsonData.post.id);",
+                  "    console.log('Created post ID saved:', jsonData.post.id);",
+                  "}",
+                  "",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('Content is required');",
+                  "}",
+                  "if (pm.response.code === 401) {",
+                  "    console.log('Unauthorized - please login first');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "content",
+                  "value": "Hello from Postman! This is a test post 🚀",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/posts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts"]
+            },
+            "description": "Create a new text-only post.\n\n🔒 Requires authentication (Bearer token).\n\nThe created post ID is automatically saved to `created_post_id` and `test_post_id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Post (With Media)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "} else {",
+                  "    console.log('Creating post with media...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Post created successfully');",
+                  "});",
+                  "",
+                  "pm.test('Response contains post with media URL', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.post).to.have.property('id');",
+                  "    pm.expect(jsonData.post).to.have.property('media_url');",
+                  "});",
+                  "",
+                  "// Save created post ID",
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('created_post_id', jsonData.post.id);",
+                  "    pm.environment.set('test_post_id', jsonData.post.id);",
+                  "    console.log('Created post with media, ID:', jsonData.post.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "content",
+                  "value": "Check out this image! 📸",
+                  "type": "text"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select an image file to upload"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/posts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts"]
+            },
+            "description": "Create a new post with media attachment (image).\n\n🔒 Requires authentication (Bearer token).\n\n⚠️ Select an image file in the `media` field before sending."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Post",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "const postId = pm.environment.get('created_post_id');",
+                  "",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "}",
+                  "if (!postId) {",
+                  "    console.warn('created_post_id is not set. Please create a post first.');",
+                  "} else {",
+                  "    console.log('Deleting post:', postId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Post deleted successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Post deleted successfully.');",
+                  "});",
+                  "",
+                  "// Clean up environment variable after deletion",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('created_post_id');",
+                  "    console.log('Post deleted and created_post_id cleared');",
+                  "}",
+                  "",
+                  "if (pm.response.code === 403) {",
+                  "    console.log('Unauthorized - only post owner can delete');",
+                  "}",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Post not found');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{created_post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{created_post_id}}"]
+            },
+            "description": "Delete a post by its ID. Only the post owner can delete.\n\n🔒 Requires authentication (Bearer token).\n\nUses `created_post_id` from Create Post."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Likes",
+      "description": "Like/Unlike toggle endpoint.",
+      "item": [
+        {
+          "name": "Toggle Like",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "const postId = pm.environment.get('test_post_id');",
+                  "",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "}",
+                  "if (!postId) {",
+                  "    console.warn('test_post_id is not set. Please fetch posts or create a post first.');",
+                  "} else {",
+                  "    console.log('Toggling like on post:', postId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response has message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test('Like added successfully', function () {",
+                  "        const jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.message).to.eql('Post liked successfully.');",
+                  "        pm.expect(jsonData).to.have.property('like');",
+                  "    });",
+                  "    console.log('Post liked ❤️');",
+                  "}",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Like removed successfully', function () {",
+                  "        const jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.message).to.eql('Like removed successfully.');",
+                  "    });",
+                  "    console.log('Like removed 💔');",
+                  "}",
+                  "",
+                  "if (pm.response.code === 404) {",
+                  "    const jsonData = pm.response.json();",
+                  "    console.log('Not found:', jsonData.message);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"postId\": \"{{test_post_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/likes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "likes"]
+            },
+            "description": "Toggle like on a post. If already liked, it will unlike. If not liked, it will like.\n\n🔒 Requires authentication (Bearer token).\n\n- 201: Like added\n- 200: Like removed"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "description": "Comment CRUD endpoints for posts.",
+      "item": [
+        {
+          "name": "Get Comments",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "const postId = pm.environment.get('test_post_id');",
+                  "",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "}",
+                  "if (!postId) {",
+                  "    console.warn('test_post_id is not set. Please fetch posts or create a post first.');",
+                  "} else {",
+                  "    console.log('Fetching comments for post:', postId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Comments retrieved successfully.');",
+                  "});",
+                  "",
+                  "pm.test('Response data is an array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Save first comment ID if available",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.length > 0) {",
+                  "        pm.environment.set('created_comment_id', jsonData.data[0].id);",
+                  "        console.log('Total comments:', jsonData.data.length);",
+                  "        console.log('Saved first comment ID:', jsonData.data[0].id);",
+                  "    } else {",
+                  "        console.log('No comments found for this post');",
+                  "    }",
+                  "}",
+                  "",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Post not found');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/comments/{{test_post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "comments", "{{test_post_id}}"]
+            },
+            "description": "Get all comments for a specific post.\n\n🔒 Requires authentication (Bearer token).\n\nUses `test_post_id` environment variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "const postId = pm.environment.get('test_post_id');",
+                  "",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "}",
+                  "if (!postId) {",
+                  "    console.warn('test_post_id is not set. Please fetch posts or create a post first.');",
+                  "} else {",
+                  "    console.log('Creating comment on post:', postId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Comment created successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Comment created successfully.');",
+                  "});",
+                  "",
+                  "pm.test('Response contains comment data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.comment).to.have.property('id');",
+                  "    pm.expect(jsonData.comment).to.have.property('content');",
+                  "    pm.expect(jsonData.comment).to.have.property('user_id');",
+                  "    pm.expect(jsonData.comment).to.have.property('post_id');",
+                  "});",
+                  "",
+                  "// Save comment ID for subsequent requests",
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('created_comment_id', jsonData.comment.id);",
+                  "    console.log('Created comment ID saved:', jsonData.comment.id);",
+                  "}",
+                  "",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('Missing required fields or invalid post ID');",
+                  "}",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Post not found');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"This is a test comment from Postman! 💬\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/comments/{{test_post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "comments", "{{test_post_id}}"]
+            },
+            "description": "Create a new comment on a specific post.\n\n🔒 Requires authentication (Bearer token).\n\nThe created comment ID is automatically saved to `created_comment_id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Comment By ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "const postId = pm.environment.get('test_post_id');",
+                  "const commentId = pm.environment.get('created_comment_id');",
+                  "",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "}",
+                  "if (!postId) {",
+                  "    console.warn('test_post_id is not set.');",
+                  "}",
+                  "if (!commentId) {",
+                  "    console.warn('created_comment_id is not set. Create a comment first.');",
+                  "} else {",
+                  "    console.log('Fetching comment:', commentId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success message', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Comment retrieved successfully.');",
+                  "});",
+                  "",
+                  "pm.test('Response contains comment data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('object');",
+                  "    pm.expect(jsonData.data).to.have.property('content');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('Invalid comment ID format');",
+                  "}",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Comment not found');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/comments/{{test_post_id}}/{{created_comment_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "comments",
+                "{{test_post_id}}",
+                "{{created_comment_id}}"
+              ]
+            },
+            "description": "Get a specific comment by its ID.\n\n🔒 Requires authentication (Bearer token).\n\nUses `test_post_id` and `created_comment_id` environment variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Comment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('auth_token');",
+                  "const postId = pm.environment.get('test_post_id');",
+                  "const commentId = pm.environment.get('created_comment_id');",
+                  "",
+                  "if (!token) {",
+                  "    console.warn('auth_token is not set. Please login first.');",
+                  "}",
+                  "if (!postId) {",
+                  "    console.warn('test_post_id is not set.');",
+                  "}",
+                  "if (!commentId) {",
+                  "    console.warn('created_comment_id is not set. Create a comment first.');",
+                  "} else {",
+                  "    console.log('Deleting comment:', commentId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Comment deleted successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql('Comment deleted successfully.');",
+                  "});",
+                  "",
+                  "// Clean up environment variable after deletion",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('created_comment_id');",
+                  "    console.log('Comment deleted and created_comment_id cleared');",
+                  "}",
+                  "",
+                  "if (pm.response.code === 403) {",
+                  "    console.log('Unauthorized - only comment owner can delete');",
+                  "}",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('Comment not found');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/comments/{{test_post_id}}/{{created_comment_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "comments",
+                "{{test_post_id}}",
+                "{{created_comment_id}}"
+              ]
+            },
+            "description": "Delete a comment by its ID. Only the comment owner can delete.\n\n🔒 Requires authentication (Bearer token).\n\nUses `created_comment_id` from Create Comment."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "migrate": "node-pg-migrate",
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down",
+    "migrate:create": "node-pg-migrate create"
   },
   "author": "",
   "license": "ISC",
@@ -27,8 +32,9 @@
     "mysql2": "^3.11.4",
     "nanoid": "^5.0.9",
     "node-cron": "^3.0.3",
+    "node-pg-migrate": "^8.0.4",
     "nodemailer": "^6.9.16",
-    "nodemon": "^3.1.7",
+    "nodemon": "^3.1.11",
     "pg": "^8.13.1",
     "sequelize": "^6.37.5"
   }

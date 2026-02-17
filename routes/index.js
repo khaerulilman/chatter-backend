@@ -1,46 +1,25 @@
 import express from "express";
-import { register, verifyOtp, login } from "../controllers/authController.js";
-import { createPost, postUpload } from "../controllers/postController.js";
-import { verifyToken } from "../middleware/createToken.js"; // Import middleware
-import { likePost } from "../controllers/likeController.js";
-import { getPosts } from "../controllers/get/getPosts.js";
-import { createComment } from "../controllers/commentController.js";
-import { getComment } from "../controllers/get/getComment.js";
-import {
-  updateProfile,
-  profileUpload,
-} from "../controllers/editProfileController.js";
+import authRoutes from "../modules/auth/auth.routes.js";
+import usersRoutes from "../modules/users/users.routes.js";
+import postsRoutes from "../modules/posts/posts.routes.js";
+import likesRoutes from "../modules/likes/likes.routes.js";
+import commentsRoutes from "../modules/comments/comments.routes.js";
 
 const router = express.Router();
 
 // Auth routes
-router.post("/register", register);
-router.post("/verify-otp", verifyOtp);
-router.post("/login", login);
-router.get("/posts", getPosts);
+router.use("/auth", authRoutes);
 
-// Route yang dilindungi oleh JWT
-router.post(
-  "/create-post",
-  verifyToken, // Middleware untuk verifikasi token
-  postUpload.fields([{ name: "media", maxCount: 1 }]),
-  createPost
-);
+// Users routes
+router.use("/users", usersRoutes);
 
-router.post("/like", verifyToken, likePost);
+// Posts routes
+router.use("/posts", postsRoutes);
 
-router.post("/posts/:postId/comments", verifyToken, createComment);
+// Likes routes
+router.use("/likes", likesRoutes);
 
-router.get("/posts/:postId/comments", verifyToken, getComment);
-
-router.post(
-  "/edit-profile",
-  profileUpload.fields([
-    { name: "profile_picture", maxCount: 1 },
-    { name: "header_picture", maxCount: 1 },
-  ]),
-  verifyToken,
-  updateProfile
-);
+// Comments routes
+router.use("/comments", commentsRoutes);
 
 export default router;
