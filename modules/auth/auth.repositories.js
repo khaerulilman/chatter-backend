@@ -34,11 +34,13 @@ export const insertUser = async (
   email,
   username,
   password,
+  profile_picture,
+  header_picture,
   isVerified = true,
 ) => {
   await db`
-    INSERT INTO users (id, name, email, username, password, isVerified)
-    VALUES (${id}, ${name}, ${email}, ${username}, ${password}, ${isVerified})
+    INSERT INTO users (id, name, email, username, password, profile_picture, header_picture, isVerified)
+    VALUES (${id}, ${name}, ${email}, ${username}, ${password}, ${profile_picture}, ${header_picture}, ${isVerified})
     ON CONFLICT (id) DO NOTHING
   `;
 };
@@ -49,5 +51,14 @@ export const updateUserToken = async (userId, token) => {
     UPDATE users
     SET token = ${token}
     WHERE id = ${userId}
+  `;
+};
+
+// Update user password by email
+export const updateUserPassword = async (email, hashedPassword) => {
+  await db`
+    UPDATE users
+    SET password = ${hashedPassword}
+    WHERE email = ${email}
   `;
 };

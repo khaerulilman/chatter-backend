@@ -40,6 +40,7 @@ export const findConversationsByUserId = async (userId) => {
       c.created_at,
       u.id AS other_user_id,
       u.name AS other_user_name,
+      u.username AS other_user_username,
       u.profile_picture AS other_user_avatar,
       last_msg.content AS last_message,
       last_msg.created_at AS last_message_at
