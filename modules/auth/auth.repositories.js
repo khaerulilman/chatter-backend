@@ -1,5 +1,11 @@
 import db from "../../config/db.js";
 
+// Check if username already exists in database
+export const findUserByUsername = async (username) => {
+  const user = await db`SELECT id FROM users WHERE username = ${username}`;
+  return user;
+};
+
 // Check if email already exists in database
 export const findUserByEmail = async (email) => {
   const user = await db`SELECT id FROM users WHERE email = ${email}`;
@@ -9,7 +15,7 @@ export const findUserByEmail = async (email) => {
 // Find user by email with all data
 export const findUserFullByEmail = async (email) => {
   const user = await db`
-    SELECT id, name, email, profile_picture, header_picture, created_at, password 
+    SELECT id, name, username, email, profile_picture, header_picture, created_at, password 
     FROM users WHERE email = ${email}
   `;
   return user;
@@ -26,12 +32,13 @@ export const insertUser = async (
   id,
   name,
   email,
+  username,
   password,
   isVerified = true,
 ) => {
   await db`
-    INSERT INTO users (id, name, email, password, isVerified)
-    VALUES (${id}, ${name}, ${email}, ${password}, ${isVerified})
+    INSERT INTO users (id, name, email, username, password, isVerified)
+    VALUES (${id}, ${name}, ${email}, ${username}, ${password}, ${isVerified})
     ON CONFLICT (id) DO NOTHING
   `;
 };

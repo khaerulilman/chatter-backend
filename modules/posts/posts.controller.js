@@ -1,5 +1,6 @@
 import {
   getPostsService,
+  getPostsByUserIdService,
   createPostService,
   getPostByIdService,
   deletePostService,
@@ -16,6 +17,30 @@ const getPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching posts:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+const getPostsByUserId = async (req, res) => {
+  const { userId } = req.params;
+  const { page = 1, limit = 20 } = req.query;
+
+  try {
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    const posts = await getPostsByUserIdService(
+      userId,
+      parseInt(page),
+      parseInt(limit),
+    );
+    res.status(200).json({
+      message: "Posts fetched successfully",
+      data: posts,
+    });
+  } catch (error) {
+    console.error("Error fetching posts by user:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 };
@@ -106,4 +131,4 @@ const deletePost = async (req, res) => {
   }
 };
 
-export { getPosts, createPost, getPostById, deletePost };
+export { getPosts, getPostsByUserId, createPost, getPostById, deletePost };

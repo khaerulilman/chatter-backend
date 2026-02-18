@@ -5,6 +5,7 @@ import {
   createComment,
   getCommentByIdWithUser,
   deleteCommentById,
+  countCommentsByPostId,
 } from "./comments.repositories.js";
 
 const getCommentsService = async (postId) => {
@@ -82,9 +83,26 @@ const deleteCommentService = async (commentId, userId) => {
   return deletedComment;
 };
 
+const getCommentStatusService = async (postId) => {
+  // Validasi postId sebagai nanoId
+  if (!/^[A-Za-z0-9_-]{21}$/.test(postId)) {
+    throw new Error("Invalid postId format.");
+  }
+
+  // Validasi post
+  const post = await findPostById(postId);
+  if (!post) {
+    throw new Error("Post not found.");
+  }
+
+  const commentCount = await countCommentsByPostId(postId);
+  return { commentCount };
+};
+
 export {
   getCommentsService,
   createCommentService,
   getCommentByIdService,
   deleteCommentService,
+  getCommentStatusService,
 };

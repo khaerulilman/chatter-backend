@@ -9,44 +9,29 @@ export const shorthands = undefined;
  * @returns {Promise<void> | void}
  */
 export const up = (pgm) => {
-  pgm.createTable("users", {
+  pgm.createTable("messages", {
     id: {
       type: "varchar(21)",
       primaryKey: true,
       notNull: true,
     },
-    name: {
-      type: "varchar(255)",
+    conversation_id: {
+      type: "varchar(21)",
       notNull: true,
+      references: "conversations(id)",
+      onDelete: "CASCADE",
     },
-    email: {
-      type: "varchar(255)",
+    sender_id: {
+      type: "varchar(21)",
       notNull: true,
-      unique: true,
+      references: "users(id)",
+      onDelete: "CASCADE",
     },
-    username: {
-      type: "varchar(50)",
-      notNull: true,
-      unique: true,
-    },
-    password: {
-      type: "text",
-      notNull: true,
-    },
-    profile_picture: {
+    content: {
       type: "text",
       notNull: false,
     },
-    header_picture: {
-      type: "text",
-      notNull: false,
-    },
-    isverified: {
-      type: "boolean",
-      notNull: true,
-      default: false,
-    },
-    token: {
+    media_url: {
       type: "text",
       notNull: false,
     },
@@ -55,16 +40,10 @@ export const up = (pgm) => {
       notNull: true,
       default: pgm.func("current_timestamp"),
     },
-    updated_at: {
-      type: "timestamp",
-      notNull: true,
-      default: pgm.func("current_timestamp"),
-    },
   });
 
-  // Create index on email and username for faster lookups
-  pgm.createIndex("users", "email");
-  pgm.createIndex("users", "username");
+  pgm.createIndex("messages", "conversation_id");
+  pgm.createIndex("messages", "sender_id");
 };
 
 /**
@@ -73,5 +52,5 @@ export const up = (pgm) => {
  * @returns {Promise<void> | void}
  */
 export const down = (pgm) => {
-  pgm.dropTable("users");
+  pgm.dropTable("messages");
 };

@@ -5,6 +5,8 @@ import {
   findLike,
   deleteLike,
   createLike,
+  countLikesByPostId,
+  isPostLikedByUser,
 } from "./likes.repositories.js";
 
 const toggleLikeService = async (userId, postId) => {
@@ -26,7 +28,13 @@ const toggleLikeService = async (userId, postId) => {
   if (existingLike) {
     // Jika sudah ada, hapus "like" (toggle functionality)
     await deleteLike(userId, postId);
-    return { liked: false, message: "Like removed successfully." };
+    const likeCount = await countLikesByPostId(postId);
+    return {
+      liked: false,
+      message: "Like removed successfully.",
+      likeCount,
+      isLiked: false,
+    };
   }
 
   // Jika belum ada, tambahkan "like"
@@ -38,7 +46,33 @@ const toggleLikeService = async (userId, postId) => {
   };
 
   await createLike(newLike);
-  return { liked: true, message: "Post liked successfully.", like: newLike };
+  const likeCount = await countLikesByPostId(postId);
+  return {
+    liked: true,
+    message: "Post liked successfully.",
+    like: newLike,
+    likeCount,
+    isLiked: true,
+  };
 };
 
-export { toggleLikeService };
+const getLikeStatusService = async (userId, postId) => {
+  // Validasi user
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  // Validasi post
+  const post = await findPostById(postId);
+  if (!post) {
+    throw new Error("Post not found.");
+  }
+
+  const isLiked = await isPostLikedByUser(userId, postId);
+  const likeCount = await countLikesByPostId(postId);
+
+  return { isLiked, likeCount };
+};
+
+export { toggleLikeService, getLikeStatusService };

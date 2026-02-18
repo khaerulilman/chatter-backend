@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import imagekit from "../../config/imagekit.js";
 import {
   findAllPosts,
+  findPostsByUserId,
   createPost,
   findUserById,
   getPostByIdWithUser,
@@ -11,6 +12,11 @@ import {
 const getPostsService = async (page, limit) => {
   const offset = (page - 1) * limit;
   return await findAllPosts(limit, offset);
+};
+
+const getPostsByUserIdService = async (userId, page, limit) => {
+  const offset = (page - 1) * limit;
+  return await findPostsByUserId(userId, limit, offset);
 };
 
 const createPostService = async (userId, content, files) => {
@@ -98,6 +104,7 @@ const deletePostService = async (postId, userId) => {
 
 export {
   getPostsService,
+  getPostsByUserIdService,
   createPostService,
   getPostByIdService,
   deletePostService,

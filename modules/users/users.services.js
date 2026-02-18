@@ -3,6 +3,7 @@ import ImageKit from "imagekit";
 import {
   findAllUsers,
   findUserById,
+  findUserByUsername,
   updateUser,
 } from "./users.repositories.js";
 
@@ -14,7 +15,33 @@ const imagekit = new ImageKit({
 });
 
 const getUsersService = async () => {
-  return await findAllUsers();
+  const users = await findAllUsers();
+  // Set default images for all users
+  return users.map((user) => ({
+    ...user,
+    profile_picture:
+      user.profile_picture ||
+      "https://ik.imagekit.io/fs0yie8l6/images%20(13).jpg?updatedAt=1736213176171",
+    header_picture:
+      user.header_picture ||
+      "https://ik.imagekit.io/fs0yie8l6/smooth-gray-background-with-high-quality_53876-124606.avif?updatedAt=1736214212559",
+  }));
+};
+
+const getUserByUsernameService = async (username) => {
+  const user = await findUserByUsername(username);
+  if (!user) throw new Error("User not found");
+  const { password, token, ...publicUser } = user;
+
+  // Set default images if not set
+  publicUser.profile_picture =
+    publicUser.profile_picture ||
+    "https://ik.imagekit.io/fs0yie8l6/images%20(13).jpg?updatedAt=1736213176171";
+  publicUser.header_picture =
+    publicUser.header_picture ||
+    "https://ik.imagekit.io/fs0yie8l6/smooth-gray-background-with-high-quality_53876-124606.avif?updatedAt=1736214212559";
+
+  return publicUser;
 };
 
 const updateProfileService = async (userId, updates, files) => {
@@ -92,7 +119,15 @@ const updateProfileService = async (userId, updates, files) => {
   await updateUser(userId, dbUpdates);
 
   // Return updated user
-  return await findUserById(userId);
+  const updatedUser = await findUserById(userId);
+  // Set default images if not set
+  updatedUser.profile_picture =
+    updatedUser.profile_picture ||
+    "https://ik.imagekit.io/fs0yie8l6/images%20(13).jpg?updatedAt=1736213176171";
+  updatedUser.header_picture =
+    updatedUser.header_picture ||
+    "https://ik.imagekit.io/fs0yie8l6/smooth-gray-background-with-high-quality_53876-124606.png?updatedAt=1736214212559";
+  return updatedUser;
 };
 
-export { getUsersService, updateProfileService };
+export { getUsersService, getUserByUsernameService, updateProfileService };

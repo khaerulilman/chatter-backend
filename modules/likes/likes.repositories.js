@@ -30,4 +30,26 @@ const createLike = async (likeData) => {
   `;
 };
 
-export { findUserById, findPostById, findLike, deleteLike, createLike };
+const countLikesByPostId = async (postId) => {
+  const result = await db`
+    SELECT COUNT(*) as count FROM likes WHERE post_id = ${postId}
+  `;
+  return parseInt(result[0].count);
+};
+
+const isPostLikedByUser = async (userId, postId) => {
+  const result = await db`
+    SELECT 1 FROM likes WHERE user_id = ${userId} AND post_id = ${postId} LIMIT 1
+  `;
+  return result.length > 0;
+};
+
+export {
+  findUserById,
+  findPostById,
+  findLike,
+  deleteLike,
+  createLike,
+  countLikesByPostId,
+  isPostLikedByUser,
+};

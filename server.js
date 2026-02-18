@@ -36,7 +36,7 @@ app.use(
       // Izinkan request
       return callback(null, true);
     },
-    methods: ["GET", "POST", "PUT", "DELETE"], // Metode HTTP yang diizinkan
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], // Metode HTTP yang diizinkan
     allowedHeaders: ["Content-Type", "Authorization"], // Header yang diizinkan
   }),
 );

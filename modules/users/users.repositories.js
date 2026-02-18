@@ -9,6 +9,11 @@ const findUserById = async (userId) => {
   return result.length > 0 ? result[0] : null;
 };
 
+const findUserByUsername = async (username) => {
+  const result = await db`SELECT * FROM users WHERE username = ${username}`;
+  return result.length > 0 ? result[0] : null;
+};
+
 const updateUser = async (userId, updates) => {
   const { name, password, profile_picture, header_picture } = updates;
   let query = `UPDATE users SET `;
@@ -40,4 +45,4 @@ const updateUser = async (userId, updates) => {
   await db(query, params);
 };
 
-export { findAllUsers, findUserById, updateUser };
+export { findAllUsers, findUserById, findUserByUsername, updateUser };

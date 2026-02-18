@@ -2,14 +2,19 @@ import * as authService from "./auth.services.js";
 
 // Register controller
 export const register = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, username } = req.body;
 
-  if (!name || !email || !password) {
+  if (!name || !email || !password || !username) {
     return res.status(400).json({ message: "Semua field harus diisi" });
   }
 
   try {
-    const result = await authService.registerService(name, email, password);
+    const result = await authService.registerService(
+      name,
+      email,
+      password,
+      username,
+    );
     res.status(201).json({
       message: result.message,
       data: { email: result.email },
@@ -17,6 +22,9 @@ export const register = async (req, res) => {
   } catch (error) {
     console.error("Register error:", error);
     if (error.message === "Email sudah terdaftar.") {
+      return res.status(409).json({ message: error.message });
+    }
+    if (error.message === "Username sudah digunakan.") {
       return res.status(409).json({ message: error.message });
     }
     if (error.message === "Akun dengan email ini sedang menunggu verifikasi.") {

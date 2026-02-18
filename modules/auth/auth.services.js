@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Register service
-export const registerService = async (name, email, password) => {
+export const registerService = async (name, email, password, username) => {
   // Check if email already exists in database
   const existingUser = await authRepository.findUserByEmail(email);
   if (existingUser.length > 0) {
@@ -26,6 +26,26 @@ export const registerService = async (name, email, password) => {
   // Check if email is waiting for verification
   if (unverifiedUsers.has(email)) {
     throw new Error("Akun dengan email ini sedang menunggu verifikasi.");
+  }
+
+  // Validate username
+  const usernameRegex = /^[a-zA-Z0-9_]+$/;
+  if (!usernameRegex.test(username)) {
+    throw new Error(
+      "Username hanya boleh berisi huruf, angka, dan underscore.",
+    );
+  }
+  if (username.length < 3 || username.length > 50) {
+    throw new Error("Username harus antara 3-50 karakter.");
+  }
+  if (/\s/.test(username)) {
+    throw new Error("Username tidak boleh mengandung spasi.");
+  }
+
+  // Check if username already exists in database
+  const existingUsername = await authRepository.findUserByUsername(username);
+  if (existingUsername.length > 0) {
+    throw new Error("Username sudah digunakan.");
   }
 
   // Hash password
@@ -46,6 +66,7 @@ export const registerService = async (name, email, password) => {
     id,
     name,
     email,
+    username,
     password: hashedPassword,
     otp,
     otpExpires,
@@ -103,6 +124,7 @@ export const verifyOtpService = async (email, otp) => {
     userData.id,
     userData.name,
     userData.email,
+    userData.username,
     userData.password,
     true,
   );
@@ -143,9 +165,14 @@ export const loginService = async (email, password) => {
     data: {
       id: currentUser.id,
       name: currentUser.name,
+      username: currentUser.username,
       email: currentUser.email,
-      profile_picture: currentUser.profile_picture,
-      header_picture: currentUser.header_picture,
+      profile_picture:
+        currentUser.profile_picture ||
+        "https://ik.imagekit.io/fs0yie8l6/images%20(13).jpg?updatedAt=1736213176171",
+      header_picture:
+        currentUser.header_picture ||
+        "https://ik.imagekit.io/fs0yie8l6/smooth-gray-background-with-high-quality_53876-124606.avif?updatedAt=1736214212559",
       created_at: currentUser.created_at,
     },
     token,

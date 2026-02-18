@@ -5,13 +5,15 @@ import {
   createComment,
   getCommentById,
   deleteComment,
+  getCommentStatus,
 } from "./comments.controller.js";
 
 const router = express.Router();
 
-router.get("/:postId", verifyToken, getComments);
+router.get("/:postId/count", getCommentStatus);
+router.get("/:postId", getComments);
 router.post("/:postId", verifyToken, createComment);
-router.get("/:postId/:commentId", verifyToken, getCommentById);
+router.get("/:postId/:commentId", getCommentById);
 router.delete("/:postId/:commentId", verifyToken, deleteComment);
 
 export default router;

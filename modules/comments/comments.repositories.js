@@ -56,6 +56,13 @@ const deleteCommentById = async (commentId) => {
   return await db`DELETE FROM comments WHERE id = ${commentId} RETURNING *`;
 };
 
+const countCommentsByPostId = async (postId) => {
+  const result = await db`
+    SELECT COUNT(*) as count FROM comments WHERE post_id = ${postId}
+  `;
+  return parseInt(result[0].count);
+};
+
 export {
   findPostById,
   findCommentsByPostId,
@@ -63,4 +70,5 @@ export {
   findCommentById,
   getCommentByIdWithUser,
   deleteCommentById,
+  countCommentsByPostId,
 };
