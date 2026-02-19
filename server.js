@@ -15,10 +15,9 @@ app.set("views", path.join(process.cwd(), "views")); // Views folder path
 app.use(express.json());
 
 // Daftar origin yang diizinkan
-const allowedOrigins = [
-  "http://localhost:5173", // Untuk development lokal
-  "https://chatter-new.vercel.app", // Untuk production di Vercel
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : [];
 
 // Konfigurasi CORS
 app.use(
