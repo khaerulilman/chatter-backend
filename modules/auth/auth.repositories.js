@@ -1,9 +1,23 @@
 import db from "../../config/db.js";
 
-// Check if username already exists (all users — username must be globally unique)
+// Check if username is taken: block if verified OR pending with a non-expired OTP
 export const findUserByUsername = async (username) => {
-  const user = await db`SELECT id FROM users WHERE username = ${username}`;
+  const user = await db`
+    SELECT id FROM users
+    WHERE username = ${username}
+      AND (isverified = true OR otp_expires > NOW())
+  `;
   return user;
+};
+
+// Delete expired pending user rows that hold a specific username (so new users can re-use it)
+export const deleteExpiredPendingByUsername = async (username) => {
+  await db`
+    DELETE FROM users
+    WHERE username = ${username}
+      AND isverified = false
+      AND otp_expires <= NOW()
+  `;
 };
 
 // Check if email already exists in verified users
@@ -28,7 +42,8 @@ export const findUserById = async (userId) => {
   return user;
 };
 
-// Insert new pending user (isverified = false, stores OTP)
+// Insert new pending user (isverified = false, stores OTP).
+// Uses UPSERT on email so retries after expiry cleanup never hit a constraint error.
 export const insertPendingUser = async (
   id,
   name,
@@ -43,6 +58,13 @@ export const insertPendingUser = async (
   await db`
     INSERT INTO users (id, name, email, username, password, profile_picture, header_picture, isverified, otp, otp_expires)
     VALUES (${id}, ${name}, ${email}, ${username}, ${password}, ${profile_picture}, ${header_picture}, false, ${otp}, ${otp_expires})
+    ON CONFLICT (email) DO UPDATE
+      SET name        = EXCLUDED.name,
+          username    = EXCLUDED.username,
+          password    = EXCLUDED.password,
+          otp         = EXCLUDED.otp,
+          otp_expires = EXCLUDED.otp_expires
+      WHERE users.isverified = false
   `;
 };
 

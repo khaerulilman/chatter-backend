@@ -30,6 +30,8 @@ export const register = async (req, res) => {
     if (error.message === "Akun dengan email ini sedang menunggu verifikasi.") {
       return res.status(409).json({ message: error.message });
     }
+    // Surface unexpected DB errors with a clear message
+    console.error("Unexpected register error:", error);
     res.status(500).json({
       message: "Register Gagal",
       error: error.message,

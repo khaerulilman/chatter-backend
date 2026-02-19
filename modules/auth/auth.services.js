@@ -50,7 +50,9 @@ export const registerService = async (name, email, password, username) => {
     throw new Error("Username tidak boleh mengandung spasi.");
   }
 
-  // Check if username already exists in database
+  // Remove any expired pending rows that are still occupying this username,
+  // then check if the username is truly still taken.
+  await authRepository.deleteExpiredPendingByUsername(username);
   const existingUsername = await authRepository.findUserByUsername(username);
   if (existingUsername.length > 0) {
     throw new Error("Username sudah digunakan.");
