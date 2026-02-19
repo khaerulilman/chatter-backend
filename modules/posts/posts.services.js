@@ -10,11 +10,31 @@ import {
 } from "./posts.repositories.js";
 
 const getPostsService = async (page, limit) => {
+  // Validate input types and values
+  if (
+    typeof page !== "number" ||
+    typeof limit !== "number" ||
+    page < 1 ||
+    limit < 1
+  ) {
+    throw new Error("Invalid page or limit values");
+  }
+
   const offset = (page - 1) * limit;
   return await findAllPosts(limit, offset);
 };
 
 const getPostsByUserIdService = async (userId, page, limit) => {
+  // Validate input types and values
+  if (
+    typeof page !== "number" ||
+    typeof limit !== "number" ||
+    page < 1 ||
+    limit < 1
+  ) {
+    throw new Error("Invalid page or limit values");
+  }
+
   const offset = (page - 1) * limit;
   return await findPostsByUserId(userId, limit, offset);
 };

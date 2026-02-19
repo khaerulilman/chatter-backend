@@ -7,10 +7,14 @@ import {
 } from "./posts.services.js";
 
 const getPosts = async (req, res) => {
-  const { page = 1, limit = 20 } = req.query;
-
   try {
-    const posts = await getPostsService(parseInt(page), parseInt(limit));
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(
+      1,
+      Math.min(100, parseInt(req.query.limit, 10) || 20),
+    );
+
+    const posts = await getPostsService(page, limit);
     res.status(200).json({
       message: "Posts fetched successfully",
       data: posts,
@@ -23,18 +27,19 @@ const getPosts = async (req, res) => {
 
 const getPostsByUserId = async (req, res) => {
   const { userId } = req.params;
-  const { page = 1, limit = 20 } = req.query;
 
   try {
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
     }
 
-    const posts = await getPostsByUserIdService(
-      userId,
-      parseInt(page),
-      parseInt(limit),
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(
+      1,
+      Math.min(100, parseInt(req.query.limit, 10) || 20),
     );
+
+    const posts = await getPostsByUserIdService(userId, page, limit);
     res.status(200).json({
       message: "Posts fetched successfully",
       data: posts,
