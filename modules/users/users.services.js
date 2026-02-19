@@ -1,18 +1,11 @@
 import bcrypt from "bcrypt";
-import ImageKit from "imagekit";
+import imagekit from "../../config/imagekit.js";
 import {
   findAllUsers,
   findUserById,
   findUserByUsername,
   updateUser,
 } from "./users.repositories.js";
-
-// Initialize ImageKit
-const imagekit = new ImageKit({
-  publicKey: "public_W3TJLavXEwO7+L/fFTIjA7PsMAQ=",
-  privateKey: "private_rK2ZYENIoaTPbVA2XAIkaehZ2sM=",
-  urlEndpoint: "https://ik.imagekit.io/fs0yie8l6",
-});
 
 const getUsersService = async () => {
   const users = await findAllUsers();
