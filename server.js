@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import cors from "cors";
-import authRoutes from "./routes/index.js";
+import routes from "./routes/index.js";
 
 dotenv.config();
 const app = express();
@@ -15,18 +15,14 @@ app.set("views", path.join(process.cwd(), "views")); // Views folder path
 app.use(express.json());
 
 // Daftar origin yang diizinkan
-const allowedOrigins = [
-  "http://localhost:5173", // Untuk development lokal
-  "https://chatter-new.vercel.app", // Untuk production di Vercel
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : [];
 
 // Konfigurasi CORS
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Log origin untuk debugging
-      console.log("Request Origin:", origin);
-
       // Izinkan request tanpa origin (seperti mobile apps atau curl requests)
       if (!origin) return callback(null, true);
 
@@ -39,13 +35,13 @@ app.use(
       // Izinkan request
       return callback(null, true);
     },
-    methods: ["GET", "POST", "PUT", "DELETE"], // Metode HTTP yang diizinkan
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], // Metode HTTP yang diizinkan
     allowedHeaders: ["Content-Type", "Authorization"], // Header yang diizinkan
-  })
+  }),
 );
 
-// API Routes (Sudah termasuk register)
-app.use("/api/auth", authRoutes);
+// API Routes
+app.use("/api", routes);
 
 // Jalankan server
 const PORT = process.env.PORT || 3000;
