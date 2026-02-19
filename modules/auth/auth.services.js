@@ -5,8 +5,7 @@ import { nanoid } from "nanoid";
 import nodemailer from "nodemailer";
 import * as authRepository from "./auth.repositories.js";
 
-const unverifiedUsers = new Map();
-const forgotPasswordRequests = new Map();
+// NOTE: In-memory Maps removed — serverless-safe: all OTP state is stored in the database.
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -18,18 +17,19 @@ const transporter = nodemailer.createTransport({
 
 // Register service
 export const registerService = async (name, email, password, username) => {
-  // Check if email already exists in database
+  // Check if email already exists as a verified user
   const existingUser = await authRepository.findUserByEmail(email);
   if (existingUser.length > 0) {
     throw new Error("Email sudah terdaftar.");
   }
 
-  // Check if email is waiting for verification
-  if (unverifiedUsers.has(email)) {
-    const userData = unverifiedUsers.get(email);
-    // If OTP has expired, allow re-registration
-    if (Date.now() > userData.otpExpires) {
-      unverifiedUsers.delete(email);
+  // Check if email is waiting for verification (stored in DB)
+  const pendingUsers = await authRepository.findPendingUserByEmail(email);
+  if (pendingUsers.length > 0) {
+    const pendingUser = pendingUsers[0];
+    // If OTP has expired, delete the pending record to allow re-registration
+    if (Date.now() > new Date(pendingUser.otp_expires).getTime()) {
+      await authRepository.deletePendingUserByEmail(email);
     } else {
       // OTP still valid, user must verify first
       throw new Error("Akun dengan email ini sedang menunggu verifikasi.");
@@ -74,17 +74,18 @@ export const registerService = async (name, email, password, username) => {
     if (checkUser.length === 0) break;
   }
 
-  unverifiedUsers.set(email, {
+  // Persist pending user to database (serverless-safe)
+  await authRepository.insertPendingUser(
     id,
     name,
     email,
     username,
-    password: hashedPassword,
+    hashedPassword,
+    defaultProfilePicture,
+    defaultHeaderPicture,
     otp,
     otpExpires,
-    profile_picture: defaultProfilePicture,
-    header_picture: defaultHeaderPicture,
-  });
+  );
 
   // Send OTP email
   const htmlContent = `
@@ -121,16 +122,17 @@ export const registerService = async (name, email, password, username) => {
 
 // Verify OTP service
 export const verifyOtpService = async (email, otp) => {
-  const userData = unverifiedUsers.get(email);
+  const pendingUsers = await authRepository.findPendingUserByEmail(email);
 
-  if (!userData) {
+  if (pendingUsers.length === 0) {
     throw new Error(
       "Email tidak ditemukan dalam data pending, lakukan register ulang!",
     );
   }
 
+  const userData = pendingUsers[0];
   const now = Date.now();
-  const otpExpireTime = userData.otpExpires.getTime();
+  const otpExpireTime = new Date(userData.otp_expires).getTime();
 
   // Debug logging
   console.log(`OTP Verification attempt for ${email}`);
@@ -142,7 +144,7 @@ export const verifyOtpService = async (email, otp) => {
   // Check if OTP has expired
   if (now > otpExpireTime) {
     console.log(`OTP expired for ${email}`);
-    unverifiedUsers.delete(email);
+    await authRepository.deletePendingUserByEmail(email);
     throw new Error("Kode OTP telah kadaluarsa. Silakan mendaftar ulang.");
   }
 
@@ -152,19 +154,8 @@ export const verifyOtpService = async (email, otp) => {
     throw new Error("Kode OTP salah.");
   }
 
-  unverifiedUsers.delete(email);
-
-  // Insert user into database
-  await authRepository.insertUser(
-    userData.id,
-    userData.name,
-    userData.email,
-    userData.username,
-    userData.password,
-    userData.profile_picture,
-    userData.header_picture,
-    true,
-  );
+  // Mark user as verified in the database
+  await authRepository.verifyPendingUser(email);
 
   console.log(`User ${email} verified successfully`);
 
@@ -175,25 +166,22 @@ export const verifyOtpService = async (email, otp) => {
 
 // Resend OTP service
 export const resendOtpService = async (email) => {
-  const userData = unverifiedUsers.get(email);
+  const pendingUsers = await authRepository.findPendingUserByEmail(email);
 
-  if (!userData) {
+  if (pendingUsers.length === 0) {
     throw new Error("Email tidak ditemukan. Silakan daftar ulang.");
   }
 
+  const userData = pendingUsers[0];
   const now = Date.now();
-  const otpExpireTime = userData.otpExpires.getTime();
+  const otpExpireTime = new Date(userData.otp_expires).getTime();
 
   // Generate new OTP regardless of whether old one expired or not
   const otp = crypto.randomInt(100000, 999999);
   const otpExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes expiry
 
-  // Update OTP in map (reset expiry too)
-  unverifiedUsers.set(email, {
-    ...userData,
-    otp,
-    otpExpires,
-  });
+  // Update OTP in database
+  await authRepository.updatePendingUserOtp(email, otp, otpExpires);
 
   console.log(`OTP resent for ${email}, was expired: ${now > otpExpireTime}`);
 
@@ -240,7 +228,8 @@ export const forgotPasswordService = async (email) => {
   const otp = crypto.randomInt(100000, 999999);
   const otpExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
-  forgotPasswordRequests.set(email, { otp, otpExpires });
+  // Persist reset OTP to database (serverless-safe)
+  await authRepository.setResetPasswordOtp(email, otp, otpExpires);
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; color: #333;">
@@ -284,7 +273,8 @@ export const resendForgotPasswordOtpService = async (email) => {
   const otp = crypto.randomInt(100000, 999999);
   const otpExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
-  forgotPasswordRequests.set(email, { otp, otpExpires });
+  // Update reset OTP in database (serverless-safe)
+  await authRepository.setResetPasswordOtp(email, otp, otpExpires);
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; color: #333;">
@@ -322,28 +312,29 @@ export const resendForgotPasswordOtpService = async (email) => {
 
 // Forgot Password - Reset Password service
 export const resetPasswordService = async (email, otp, newPassword) => {
-  const data = forgotPasswordRequests.get(email);
+  const rows = await authRepository.findResetPasswordOtp(email);
 
-  if (!data) {
+  if (rows.length === 0 || !rows[0].reset_otp) {
     throw new Error("Email tidak ditemukan. Silakan request OTP ulang.");
   }
 
+  const data = rows[0];
   const now = Date.now();
-  const otpExpireTime = data.otpExpires.getTime();
+  const otpExpireTime = new Date(data.reset_otp_expires).getTime();
 
   if (now > otpExpireTime) {
-    forgotPasswordRequests.delete(email);
+    await authRepository.clearResetPasswordOtp(email);
     throw new Error("Kode OTP telah kadaluarsa. Silakan request OTP ulang.");
   }
 
-  if (data.otp !== parseInt(otp)) {
+  if (data.reset_otp !== parseInt(otp)) {
     throw new Error("Kode OTP salah.");
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   await authRepository.updateUserPassword(email, hashedPassword);
 
-  forgotPasswordRequests.delete(email);
+  await authRepository.clearResetPasswordOtp(email);
 
   console.log(`Password reset successfully for ${email}`);
 
