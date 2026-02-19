@@ -1,9 +1,8 @@
 import db from "../../config/db.js";
 
-// Check if username already exists (verified users only)
+// Check if username already exists (all users — username must be globally unique)
 export const findUserByUsername = async (username) => {
-  const user =
-    await db`SELECT id FROM users WHERE username = ${username} AND isverified = true`;
+  const user = await db`SELECT id FROM users WHERE username = ${username}`;
   return user;
 };
 
