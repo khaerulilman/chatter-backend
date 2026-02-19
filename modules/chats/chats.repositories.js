@@ -125,3 +125,15 @@ export const findUserById = async (userId) => {
   const result = await db`SELECT 1 FROM users WHERE id = ${userId} LIMIT 1`;
   return result.length > 0;
 };
+
+/**
+ * Get the OTHER member's user_id in a private conversation.
+ */
+export const findOtherMember = async (conversationId, myUserId) => {
+  const result = await db`
+    SELECT user_id FROM conversation_members
+    WHERE conversation_id = ${conversationId} AND user_id != ${myUserId}
+    LIMIT 1
+  `;
+  return result.length > 0 ? result[0].user_id : null;
+};

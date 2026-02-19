@@ -8,6 +8,7 @@ import {
   countLikesByPostId,
   isPostLikedByUser,
 } from "./likes.repositories.js";
+import { createNotificationService } from "../notifications/notifications.services.js";
 
 const toggleLikeService = async (userId, postId) => {
   // Validasi user
@@ -47,6 +48,15 @@ const toggleLikeService = async (userId, postId) => {
 
   await createLike(newLike);
   const likeCount = await countLikesByPostId(postId);
+
+  // Notify post owner (skip if user is liking their own post)
+  await createNotificationService({
+    recipient_id: post.user_id,
+    actor_id: userId,
+    type: "like",
+    entity_id: postId,
+  });
+
   return {
     liked: true,
     message: "Post liked successfully.",

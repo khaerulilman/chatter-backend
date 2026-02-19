@@ -9,7 +9,9 @@ import {
   createMessage,
   findMessagesByConversationId,
   findUserById,
+  findOtherMember,
 } from "./chats.repositories.js";
+import { createNotificationService } from "../notifications/notifications.services.js";
 
 // ─── Conversations ────────────────────────────────────────────────
 
@@ -85,19 +87,44 @@ export const sendMessageService = async (
             content: content ?? null,
             media_url: result.url,
           });
+
+          // Notify the other member
+          const recipientId = await findOtherMember(conversationId, senderId);
+          if (recipientId) {
+            await createNotificationService({
+              recipient_id: recipientId,
+              actor_id: senderId,
+              type: "message",
+              entity_id: conversationId,
+            });
+          }
+
           resolve(message);
         },
       );
     });
   }
 
-  return await createMessage({
+  const message = await createMessage({
     id: messageId,
     conversation_id: conversationId,
     sender_id: senderId,
     content,
     media_url: null,
   });
+
+  // Notify the other member
+  const recipientId = await findOtherMember(conversationId, senderId);
+  if (recipientId) {
+    await createNotificationService({
+      recipient_id: recipientId,
+      actor_id: senderId,
+      type: "message",
+      entity_id: conversationId,
+    });
+  }
+
+  return message;
 };
 
 export const getMessagesService = async (

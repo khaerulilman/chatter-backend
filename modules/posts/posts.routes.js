@@ -9,6 +9,11 @@ import {
   deletePost,
 } from "./posts.controller.js";
 import { likePost, getLikeStatus } from "../likes/likes.controller.js";
+import {
+  toggleSavePost,
+  getSaveStatus,
+  getSavedPosts,
+} from "../saved/saved.controller.js";
 
 const router = express.Router();
 
@@ -18,6 +23,7 @@ const postUpload = multer({ storage: storage });
 
 router.get("/", getPosts);
 router.get("/user/:userId", getPostsByUserId);
+router.get("/saved", verifyToken, getSavedPosts);
 router.get("/:postId", getPostById);
 
 router.post(
@@ -29,6 +35,9 @@ router.post(
 
 router.patch("/:postId/likes", verifyToken, likePost);
 router.get("/:postId/likes", verifyToken, getLikeStatus);
+
+router.patch("/:postId/saves", verifyToken, toggleSavePost);
+router.get("/:postId/saves", verifyToken, getSaveStatus);
 
 router.delete("/:postId", verifyToken, deletePost);
 

@@ -2,7 +2,7 @@ import db from "../../config/db.js";
 
 const findAllPosts = async (limit, offset) => {
   return await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -46,7 +46,7 @@ const findUserById = async (userId) => {
 
 const findPostsByUserId = async (userId, limit, offset) => {
   return await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -63,7 +63,7 @@ const findPostsByUserId = async (userId, limit, offset) => {
 
 const getPostByIdWithUser = async (postId) => {
   const result = await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id

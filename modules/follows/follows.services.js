@@ -11,6 +11,7 @@ import {
   getRecommendedUsers,
   getFollowingIds,
 } from "./follows.repositories.js";
+import { createNotificationService } from "../notifications/notifications.services.js";
 
 const toggleFollowService = async (followerId, followingId) => {
   if (followerId === followingId) {
@@ -44,6 +45,15 @@ const toggleFollowService = async (followerId, followingId) => {
 
   await createFollow(newFollow);
   const followerCount = await countFollowers(followingId);
+
+  // Notify the user being followed
+  await createNotificationService({
+    recipient_id: followingId,
+    actor_id: followerId,
+    type: "follow",
+    entity_id: null,
+  });
+
   return {
     following: true,
     message: "Followed successfully.",

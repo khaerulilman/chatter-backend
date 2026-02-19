@@ -7,6 +7,7 @@ import {
   deleteCommentById,
   countCommentsByPostId,
 } from "./comments.repositories.js";
+import { createNotificationService } from "../notifications/notifications.services.js";
 
 const getCommentsService = async (postId) => {
   // Validasi postId sebagai nanoId
@@ -46,6 +47,15 @@ const createCommentService = async (userId, postId, content) => {
   };
 
   await createComment(newComment);
+
+  // Notify post owner (skip if owner is commenting on their own post)
+  await createNotificationService({
+    recipient_id: post.user_id,
+    actor_id: userId,
+    type: "comment",
+    entity_id: postId,
+  });
+
   return newComment;
 };
 
