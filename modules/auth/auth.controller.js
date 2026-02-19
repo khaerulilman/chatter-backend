@@ -18,6 +18,7 @@ export const register = async (req, res) => {
     res.status(201).json({
       message: result.message,
       data: { email: result.email },
+      emailSent: result.emailSent ?? true,
     });
   } catch (error) {
     console.error("Register error:", error);

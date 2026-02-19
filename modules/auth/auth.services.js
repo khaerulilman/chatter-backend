@@ -13,6 +13,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
 });
 
 // Register service
@@ -114,11 +117,24 @@ export const registerService = async (name, email, password, username) => {
     html: htmlContent,
   };
 
-  await transporter.sendMail(mailOptions);
+  // Wrap email sending in try-catch so registration isn't lost if email fails
+  let emailSent = false;
+  try {
+    await transporter.sendMail(mailOptions);
+    emailSent = true;
+  } catch (emailError) {
+    console.error("Failed to send OTP email:", emailError.message);
+    console.error("EMAIL_USER configured:", !!process.env.EMAIL_USER);
+    console.error("EMAIL_PASS configured:", !!process.env.EMAIL_PASS);
+    // Don't throw — user is already in DB; they can use resend-otp
+  }
 
   return {
-    message: "OTP sent successfully. Please check your email.",
+    message: emailSent
+      ? "OTP sent successfully. Please check your email."
+      : "Registrasi berhasil, namun gagal mengirim OTP. Silakan gunakan kirim ulang OTP.",
     email,
+    emailSent,
   };
 };
 
