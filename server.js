@@ -1,10 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
-import dotenv from "dotenv";
 import cors from "cors";
-import routes from "./routes/index.js";
-
-dotenv.config();
+import routes from "./src/adapters/routes/index.js";
+import redis from "./src/frameworks/redis/redis.js";
 const app = express();
 
 // Set view engine
@@ -45,6 +44,20 @@ app.use("/api", routes);
 
 // Jalankan server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// Graceful shutdown
+const shutdown = async () => {
+  console.log("Shutting down gracefully...");
+  server.close();
+  if (redis.status === "ready") {
+    await redis.quit();
+    console.log("Redis disconnected");
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
