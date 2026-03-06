@@ -29,7 +29,7 @@ router.get("/:postId", getPostById);
 router.post(
   "/",
   verifyToken,
-  postUpload.fields([{ name: "media", maxCount: 1 }]),
+  postUpload.fields([{ name: "media", maxCount: 30 }]),
   createPost,
 );
 

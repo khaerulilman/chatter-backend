@@ -9,5 +9,14 @@ export const upload = (opts) =>
     });
   });
 
-// Hapus file dari ImageKit berdasarkan fileId.
+// Hapus satu file dari ImageKit berdasarkan fileId.
 export const deleteFile = (fileId) => imagekit.deleteFile(fileId);
+
+// Hapus banyak file dari ImageKit sekaligus (max 100).
+export const deleteFiles = (fileIds) =>
+  new Promise((resolve, reject) => {
+    imagekit.bulkDeleteFiles(fileIds, (error, result) => {
+      if (error) return reject(new Error("ImageKit bulk delete failed."));
+      resolve(result);
+    });
+  });

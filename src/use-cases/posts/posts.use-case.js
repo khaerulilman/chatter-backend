@@ -42,21 +42,26 @@ export const makePostUseCases = ({
     const postId = idService.generateId();
 
     let newPost;
-    if (files && files.media) {
-      const mediaFile = files.media[0];
+    if (files && files.media && files.media.length > 0) {
+      // Upload all media files in parallel
+      const uploadPromises = files.media.map((mediaFile) =>
+        imageService.upload({
+          file: mediaFile.buffer,
+          fileName: mediaFile.originalname,
+          folder: "/posts/media",
+        }),
+      );
+      const results = await Promise.all(uploadPromises);
+      const mediaUrls = results.map((r) => r.url);
+      const mediaFileids = results.map((r) => r.fileId);
 
-      const result = await imageService.upload({
-        file: mediaFile.buffer,
-        fileName: mediaFile.originalname,
-        folder: "/posts/media",
-      });
-
-      const mediaUrl = result.url;
       newPost = await postRepository.createPost({
         id: postId,
         user_id: userId,
         content,
-        media_url: mediaUrl,
+        media_url: mediaUrls[0],
+        media_urls: mediaUrls,
+        media_fileids: mediaFileids,
       });
     } else {
       newPost = await postRepository.createPost({
@@ -94,6 +99,17 @@ export const makePostUseCases = ({
 
     if (post.user_id !== userId) {
       throw new Error("Unauthorized. Only post owner can delete.");
+    }
+
+    // Delete images from ImageKit before removing post from DB
+    const fileIds = await postRepository.getMediaFileidsByPostId(postId);
+    if (fileIds && fileIds.length > 0) {
+      try {
+        await imageService.deleteFiles(fileIds);
+      } catch (err) {
+        // Log but don't block post deletion if ImageKit fails
+        console.error("Failed to delete images from ImageKit:", err.message);
+      }
     }
 
     const deletedPost = await postRepository.deletePostById(postId);
