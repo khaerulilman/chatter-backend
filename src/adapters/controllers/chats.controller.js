@@ -9,10 +9,6 @@ const {
 
 // ─── Conversations ────────────────────────────────────────────────
 
-/**
- * POST /chats/conversations
- * Body: { target_user_id }
- */
 export const getOrCreateConversation = async (req, res) => {
   const myId = req.user.id;
   const { target_user_id } = req.body;

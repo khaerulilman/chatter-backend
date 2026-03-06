@@ -9,7 +9,7 @@ const findAllPosts = async (limit, offset) => {
   if (cached) return cached;
 
   const posts = await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -32,13 +32,14 @@ const findPostById = async (postId) => {
 };
 
 const createPost = async (postData) => {
-  const { id, user_id, content, media_url } = postData;
+  const { id, user_id, content, media_url, media_urls, media_fileids } =
+    postData;
 
   let result;
   if (media_url) {
     result = await db`
-      INSERT INTO posts (id, user_id, content, media_url)
-      VALUES (${id}, ${user_id}, ${content}, ${media_url})
+      INSERT INTO posts (id, user_id, content, media_url, media_urls, media_fileids)
+      VALUES (${id}, ${user_id}, ${content}, ${media_url}, ${media_urls ? JSON.stringify(media_urls) : null}, ${media_fileids ? JSON.stringify(media_fileids) : null})
       RETURNING *
     `;
   } else {
@@ -66,7 +67,7 @@ const findPostsByUserId = async (userId, limit, offset) => {
   if (cached) return cached;
 
   const posts = await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -90,7 +91,7 @@ const getPostByIdWithUser = async (postId) => {
   if (cached) return cached;
 
   const result = await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
@@ -124,6 +125,11 @@ const deletePostById = async (postId) => {
   return result;
 };
 
+const getMediaFileidsByPostId = async (postId) => {
+  const result = await db`SELECT media_fileids FROM posts WHERE id = ${postId}`;
+  return result.length > 0 ? result[0].media_fileids : null;
+};
+
 export {
   findAllPosts,
   findPostById,
@@ -132,4 +138,5 @@ export {
   findPostsByUserId,
   getPostByIdWithUser,
   deletePostById,
+  getMediaFileidsByPostId,
 };

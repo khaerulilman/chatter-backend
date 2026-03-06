@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import cors from "cors";
+import helmet from "helmet";
 import routes from "./src/adapters/routes/index.js";
 import redis from "./src/frameworks/redis/redis.js";
 const app = express();
@@ -12,6 +13,9 @@ app.set("views", path.join(process.cwd(), "views")); // Views folder path
 
 // Middleware untuk parsing JSON
 app.use(express.json());
+
+// Security Helmet Middleware
+app.use(helmet());
 
 // Daftar origin yang diizinkan
 const allowedOrigins = process.env.ALLOWED_ORIGINS

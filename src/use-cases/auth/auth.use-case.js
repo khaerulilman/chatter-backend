@@ -147,6 +147,29 @@ export const makeAuthUseCases = ({
 
     console.log(`User ${email} verified successfully`);
 
+    // Send welcome email
+    const welcomeHtml = `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+          <img src="https://res.cloudinary.com/dtonikyjm/image/upload/v1732804728/chatter-logo-panjang.jpg" alt="Chatter Logo" style="width: auto; height: 100px;">
+        </div>
+        <div style="padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-top: 10px;">
+          <h2 style="color: #1a73e8;">Welcome to Social Chatter!</h2>
+          <p>Hi ${userData.name},</p>
+          <p>Your account has been successfully created. You can now start sharing posts, connecting with the community, and supporting or receiving support through paid posts.</p>
+          <p>We're glad to have you with us.</p>
+          <br>
+          <p style="color: #666;">Best regards,<br><strong>Social Chatter Team</strong></p>
+        </div>
+      </div>
+    `;
+
+    await emailService.sendMail({
+      to: email,
+      subject: "Welcome to Social Chatter!",
+      html: welcomeHtml,
+    });
+
     return {
       message: "Email berhasil diverifikasi.",
     };
