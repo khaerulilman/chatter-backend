@@ -6,6 +6,8 @@ import commentsRoutes from "./comments.routes.js";
 import chatsRoutes from "./chats.routes.js";
 import followsRoutes from "./follows.routes.js";
 import notificationsRoutes from "./notifications.routes.js";
+import walletRoutes from "./wallet.routes.js";
+import tipsRoutes from "./tips.routes.js";
 
 const router = express.Router();
 
@@ -29,5 +31,11 @@ router.use("/follows", followsRoutes);
 
 // Notifications routes
 router.use("/notifications", notificationsRoutes);
+
+// Wallet routes
+router.use("/wallet", walletRoutes);
+
+// Tips routes
+router.use("/tips", tipsRoutes);
 
 export default router;

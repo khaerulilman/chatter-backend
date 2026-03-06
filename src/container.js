@@ -15,6 +15,8 @@ import * as notificationRepository from "./adapters/repositories/notifications.r
 import * as postRepository from "./adapters/repositories/posts.repository.js";
 import * as savedRepository from "./adapters/repositories/saved.repository.js";
 import * as userRepository from "./adapters/repositories/users.repository.js";
+import * as walletRepository from "./adapters/repositories/wallet.repository.js";
+import * as tipsRepository from "./adapters/repositories/tips.repository.js";
 
 // ── Use-Case Factories ────────────────────────────────────────────
 import { makeNotificationUseCases } from "./use-cases/notifications/notifications.use-case.js";
@@ -26,6 +28,9 @@ import { makeLikeUseCases } from "./use-cases/likes/likes.use-case.js";
 import { makePostUseCases } from "./use-cases/posts/posts.use-case.js";
 import { makeSavedUseCases } from "./use-cases/saved/saved.use-case.js";
 import { makeUserUseCases } from "./use-cases/users/users.use-case.js";
+import { makeWalletUseCases } from "./use-cases/wallet/wallet.use-case.js";
+import { makeTipsUseCases } from "./use-cases/tips/tips.use-case.js";
+import * as midtransService from "./adapters/services/midtrans.service.js";
 
 // ── Wire Dependencies ─────────────────────────────────────────────
 
@@ -82,4 +87,17 @@ export const userUseCases = makeUserUseCases({
   hashService,
   imageService,
   userRepository,
+});
+
+export const walletUseCases = makeWalletUseCases({
+  idService,
+  walletRepository,
+  midtransService,
+});
+
+export const tipsUseCases = makeTipsUseCases({
+  idService,
+  tipsRepository,
+  walletRepository,
+  notifyService: notificationUseCases,
 });
