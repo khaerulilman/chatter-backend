@@ -93,7 +93,14 @@ export const makePostUseCases = ({
     userId,
     content,
     files,
-    { isFollowerOnly, isPaid, price, hiddenContent, hiddenMediaFiles } = {},
+    {
+      isFollowerOnly,
+      isPaid,
+      price,
+      hiddenContent,
+      hiddenMediaFiles,
+      commentsDisabled,
+    } = {},
   ) => {
     const userExists = await postRepository.findUserById(userId);
     if (!userExists) {
@@ -162,6 +169,7 @@ export const makePostUseCases = ({
       hidden_media_fileids: hiddenMediaFileids,
       is_paid: isPaid || false,
       price: isPaid ? Number(price) : null,
+      comments_disabled: commentsDisabled || false,
     });
 
     return newPost[0];
@@ -195,7 +203,7 @@ export const makePostUseCases = ({
       throw new Error("Unauthorized. Only post owner can delete.");
     }
 
-    // Delete images from ImageKit before removing post from DB
+    // Delete all images (public + hidden) from ImageKit before removing post from DB
     const fileIds = await postRepository.getMediaFileidsByPostId(postId);
     if (fileIds && fileIds.length > 0) {
       try {
