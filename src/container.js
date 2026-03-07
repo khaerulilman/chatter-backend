@@ -77,10 +77,12 @@ export const postUseCases = makePostUseCases({
   idService,
   imageService,
   postRepository,
+  walletRepository,
 });
 
 export const savedUseCases = makeSavedUseCases({
   savedRepository,
+  postRepository,
 });
 
 export const userUseCases = makeUserUseCases({

@@ -1,0 +1,320 @@
+{
+  "info": {
+    "_postman_id": "chatter-follows-collection",
+    "name": "Chatter - Follows API",
+    "description": "Follows endpoints: Toggle Follow, Get Follow Status, Get Followers, Get Following, Get Follow Stats, Get Recommended Users, Get Following IDs.\nOnly success (200) test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Toggle Follow",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Toggle Follow] target_user_id:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has follow data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('following');",
+              "    pm.expect(body).to.have.property('followerCount');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/{{target_user_id}}/toggle",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "{{target_user_id}}", "toggle"]
+        }
+      }
+    },
+    {
+      "name": "Get Follow Status",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Follow Status] target_user_id:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has follow status', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('following');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/{{target_user_id}}/status",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "{{target_user_id}}", "status"]
+        }
+      }
+    },
+    {
+      "name": "Get Followers",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Followers] userId:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has followers data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/{{target_user_id}}/followers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "{{target_user_id}}", "followers"]
+        }
+      }
+    },
+    {
+      "name": "Get Following",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Following] userId:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has following data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/{{target_user_id}}/following",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "{{target_user_id}}", "following"]
+        }
+      }
+    },
+    {
+      "name": "Get Follow Stats",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Follow Stats] userId:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has follower and following count', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('followerCount');",
+              "    pm.expect(body).to.have.property('followingCount');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/stats/{{target_user_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "stats", "{{target_user_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Recommended Users",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Recommended Users] Fetching recommendations');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has users data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/recommended",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "recommended"]
+        }
+      }
+    },
+    {
+      "name": "Get Following IDs",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Following IDs] Fetching following IDs');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has IDs data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/follows/following-ids",
+          "host": ["{{base_url}}"],
+          "path": ["api", "follows", "following-ids"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+{
+  "info": {
+    "_postman_id": "chatter-notifications-collection",
+    "name": "Chatter - Notifications API",
+    "description": "Notifications endpoints: Get Notifications, Get Unread Count, Mark Read, Mark All Read, Delete Notification.\nAll require authentication. Only success (200) test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Notifications",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Notifications] Fetching notifications');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has notifications data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});",
+              "",
+              "// Save first notification ID for subsequent tests",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.length > 0) {",
+              "    pm.environment.set('notification_id', body.data[0].id);",
+              "    console.log('[Get Notifications] Saved notification_id:', body.data[0].id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/notifications",
+          "host": ["{{base_url}}"],
+          "path": ["api", "notifications"]
+        }
+      }
+    },
+    {
+      "name": "Get Unread Count",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["console.log('[Get Unread Count] Fetching unread count');"]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has unread count', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('unreadCount');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/notifications/unread-count",
+          "host": ["{{base_url}}"],
+          "path": ["api", "notifications", "unread-count"]
+        }
+      }
+    },
+    {
+      "name": "Mark Notification as Read",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Mark Read] notificationId:', pm.environment.get('notification_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has success message', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/notifications/{{notification_id}}/read",
+          "host": ["{{base_url}}"],
+          "path": ["api", "notifications", "{{notification_id}}", "read"]
+        }
+      }
+    },
+    {
+      "name": "Mark All Notifications as Read",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["console.log('[Mark All Read] Marking all as read');"]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has success message', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/notifications/read-all",
+          "host": ["{{base_url}}"],
+          "path": ["api", "notifications", "read-all"]
+        }
+      }
+    },
+    {
+      "name": "Delete Notification",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Delete Notification] notificationId:', pm.environment.get('notification_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has success message', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/notifications/{{notification_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "notifications", "{{notification_id}}"]
+        }
+      }
+    }
+  ]
+}

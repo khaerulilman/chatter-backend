@@ -1,0 +1,257 @@
+{
+  "info": {
+    "_postman_id": "chatter-chats-collection",
+    "name": "Chatter - Chats API",
+    "description": "Chats endpoints: Get/Create Conversation, Get My Conversations, Send Message, Get Messages.\nAll require authentication. Only success (200/201) test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get or Create Conversation",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get/Create Conversation] target_user_id:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200 or 201', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "pm.test('Response has conversation data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.have.property('id');",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.id) {",
+              "    pm.environment.set('conversation_id', body.data.id);",
+              "    console.log('[Get/Create Conversation] Saved conversation_id:', body.data.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"target_user_id\": \"{{target_user_id}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/chats/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chats", "conversations"]
+        }
+      }
+    },
+    {
+      "name": "Get My Conversations",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get My Conversations] Fetching conversations');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has conversations data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});",
+              "",
+              "// Save first conversation ID if available",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.length > 0 && !pm.environment.get('conversation_id')) {",
+              "    pm.environment.set('conversation_id', body.data[0].id);",
+              "    console.log('[Get My Conversations] Saved conversation_id:', body.data[0].id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/chats/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chats", "conversations"]
+        }
+      }
+    },
+    {
+      "name": "Send Message (Text)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Send Message] conversationId:', pm.environment.get('conversation_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has message data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.id) {",
+              "    pm.environment.set('message_id', body.data.id);",
+              "    console.log('[Send Message] Saved message_id:', body.data.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "content",
+              "value": "Hello from Postman test!",
+              "type": "text"
+            },
+            { "key": "media", "type": "file", "src": "", "disabled": true }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/chats/conversations/{{conversation_id}}/messages",
+          "host": ["{{base_url}}"],
+          "path": [
+            "api",
+            "chats",
+            "conversations",
+            "{{conversation_id}}",
+            "messages"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Messages",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Messages] conversationId:', pm.environment.get('conversation_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has messages data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/chats/conversations/{{conversation_id}}/messages?page=1&limit=30",
+          "host": ["{{base_url}}"],
+          "path": [
+            "api",
+            "chats",
+            "conversations",
+            "{{conversation_id}}",
+            "messages"
+          ],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "30" }
+          ]
+        }
+      }
+    }
+  ]
+}

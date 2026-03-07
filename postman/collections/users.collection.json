@@ -1,0 +1,217 @@
+{
+  "info": {
+    "_postman_id": "chatter-users-collection",
+    "name": "Chatter - Users API",
+    "description": "Users endpoints: Get All Users, Get User By Username, Get Posts By User, Update Profile.\nOnly success (200) test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get All Users",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["console.log('[Get All Users] Fetching all users');"]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has users data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});",
+              "",
+              "// Save first user for subsequent tests",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.length > 0) {",
+              "    const user = body.data[0];",
+              "    pm.environment.set('target_user_id', user.id);",
+              "    if (user.username) {",
+              "        pm.environment.set('target_username', user.username);",
+              "    }",
+              "    console.log('[Get All Users] Saved target_user_id:', user.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/users",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users"]
+        }
+      }
+    },
+    {
+      "name": "Get User By Username",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get User By Username] Using username:', pm.environment.get('target_username'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has user data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('user');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/users/{{target_username}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users", "{{target_username}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Posts By User",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Posts By User] Using userId:', pm.environment.get('target_user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has posts data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/users/{{target_user_id}}/posts?page=1&limit=20",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users", "{{target_user_id}}", "posts"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Profile",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Update Profile] Updating profile for user:', pm.environment.get('user_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has updated user data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('user');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "name", "value": "Updated Name", "type": "text" },
+            {
+              "key": "bio",
+              "value": "Updated bio via Postman",
+              "type": "text"
+            },
+            {
+              "key": "profile_picture",
+              "type": "file",
+              "src": "",
+              "disabled": true
+            },
+            {
+              "key": "header_picture",
+              "type": "file",
+              "src": "",
+              "disabled": true
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/users/edit-profile",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users", "edit-profile"]
+        }
+      }
+    }
+  ]
+}

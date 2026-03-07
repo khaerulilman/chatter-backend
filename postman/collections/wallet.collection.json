@@ -1,0 +1,310 @@
+{
+  "info": {
+    "_postman_id": "chatter-wallet-collection",
+    "name": "Chatter - Wallet API",
+    "description": "Wallet endpoints: Get Balance, Create Top Up, Midtrans Notification (webhook), Get Transactions, Verify Top Up, Get Midtrans Client Key.\nOnly success (200/201) test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Balance",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["console.log('[Get Balance] Fetching wallet balance');"]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has balance data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallet/balance",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallet", "balance"]
+        }
+      }
+    },
+    {
+      "name": "Create Top Up",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["console.log('[Create Top Up] Creating top up request');"]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has top up data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "if (body.data && body.data.order_id) {",
+              "    pm.environment.set('order_id', body.data.order_id);",
+              "    console.log('[Create Top Up] Saved order_id:', body.data.order_id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 50000\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallet/topup",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallet", "topup"]
+        }
+      }
+    },
+    {
+      "name": "Verify Top Up",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Verify Top Up] order_id:', pm.environment.get('order_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has verification data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"order_id\": \"{{order_id}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallet/topup/verify",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallet", "topup", "verify"]
+        }
+      }
+    },
+    {
+      "name": "Midtrans Notification (Webhook)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Midtrans Notification] Sending webhook notification');",
+              "console.log('[Midtrans Notification] NOTE: This simulates a Midtrans webhook callback.');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"order_id\": \"{{order_id}}\",\n  \"transaction_status\": \"settlement\",\n  \"fraud_status\": \"accept\",\n  \"gross_amount\": \"50000.00\",\n  \"payment_type\": \"bank_transfer\",\n  \"signature_key\": \"{{midtrans_signature}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallet/midtrans-notification",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallet", "midtrans-notification"]
+        }
+      }
+    },
+    {
+      "name": "Get Transactions",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Transactions] Fetching transaction history');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has transactions data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallet/transactions?page=1&limit=20",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallet", "transactions"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Midtrans Client Key",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Client Key] Fetching Midtrans client key');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has client key', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.have.property('clientKey');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallet/midtrans-client-key",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallet", "midtrans-client-key"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,253 @@
+{
+  "info": {
+    "_postman_id": "chatter-comments-collection",
+    "name": "Chatter - Comments API",
+    "description": "Comments endpoints: Get Comments, Create Comment, Get Comment By ID, Delete Comment, Get Comment Count.\nOnly success (200/201) test cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Comment Count",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Comment Count] postId:', pm.environment.get('test_post_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has comment count', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('commentCount');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/comments/{{test_post_id}}/count",
+          "host": ["{{base_url}}"],
+          "path": ["api", "comments", "{{test_post_id}}", "count"]
+        }
+      }
+    },
+    {
+      "name": "Get Comments",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Comments] postId:', pm.environment.get('test_post_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has comments data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "    pm.expect(body.data).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/comments/{{test_post_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "comments", "{{test_post_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Create Comment",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Create Comment] postId:', pm.environment.get('test_post_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has comment data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('comment');",
+              "    pm.expect(body.comment).to.have.property('id');",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "if (body.comment && body.comment.id) {",
+              "    pm.environment.set('created_comment_id', body.comment.id);",
+              "    console.log('[Create Comment] Saved created_comment_id:', body.comment.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"content\": \"This is a test comment from Postman\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/comments/{{test_post_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "comments", "{{test_post_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Comment By ID",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Get Comment By ID] commentId:', pm.environment.get('created_comment_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has comment data', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "    pm.expect(body).to.have.property('data');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/comments/{{test_post_id}}/{{created_comment_id}}",
+          "host": ["{{base_url}}"],
+          "path": [
+            "api",
+            "comments",
+            "{{test_post_id}}",
+            "{{created_comment_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Comment",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "console.log('[Delete Comment] commentId:', pm.environment.get('created_comment_id'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has success message', function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('message');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            { "key": "token", "value": "{{auth_token}}", "type": "string" }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/comments/{{test_post_id}}/{{created_comment_id}}",
+          "host": ["{{base_url}}"],
+          "path": [
+            "api",
+            "comments",
+            "{{test_post_id}}",
+            "{{created_comment_id}}"
+          ]
+        }
+      }
+    }
+  ]
+}
