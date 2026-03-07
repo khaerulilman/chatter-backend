@@ -30,6 +30,10 @@ export const makeCommentUseCases = ({
       throw new Error("Post not found.");
     }
 
+    if (post.comments_disabled && post.user_id !== userId) {
+      throw new Error("Comments are disabled for this post.");
+    }
+
     const newComment = {
       id: idService.generateId(),
       user_id: userId,

@@ -62,8 +62,14 @@ const getPostsByUserId = async (req, res) => {
 
 const createPost = async (req, res) => {
   try {
-    const { content, is_follower_only, is_paid, price, hidden_content } =
-      req.body;
+    const {
+      content,
+      is_follower_only,
+      is_paid,
+      price,
+      hidden_content,
+      comments_disabled,
+    } = req.body;
 
     if (!content) {
       return res.status(400).json({ message: "Content is required" });
@@ -73,6 +79,8 @@ const createPost = async (req, res) => {
     const isFollowerOnly =
       is_follower_only === "true" || is_follower_only === true;
     const isPaid = is_paid === "true" || is_paid === true;
+    const isCommentsDisabled =
+      comments_disabled === "true" || comments_disabled === true;
 
     const newPost = await createPostService(userId, content, req.files, {
       isFollowerOnly: isFollowerOnly && !isPaid,
@@ -83,6 +91,7 @@ const createPost = async (req, res) => {
         (isFollowerOnly || isPaid) && req.files?.hidden_media
           ? req.files.hidden_media
           : null,
+      commentsDisabled: isCommentsDisabled,
     });
     return res.status(201).json({
       message: "Post created successfully",
@@ -207,12 +216,10 @@ const getPurchaseActivity = async (req, res) => {
     res.status(200).json({ data: result });
   } catch (error) {
     console.error("Get purchase activity error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to get purchase activity",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to get purchase activity",
+      error: error.message,
+    });
   }
 };
 

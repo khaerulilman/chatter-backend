@@ -11,7 +11,7 @@ const findAllPosts = async (limit, offset) => {
   const posts = await db`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
-           p.is_paid, p.price,
+           p.is_paid, p.price, p.comments_disabled,
            u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
@@ -48,13 +48,14 @@ const createPost = async (postData) => {
     hidden_media_fileids,
     is_paid,
     price,
+    comments_disabled,
   } = postData;
 
   const result = await db`
     INSERT INTO posts (
       id, user_id, content, media_url, media_urls, media_fileids,
       is_follower_only, hidden_content, hidden_media_urls, hidden_media_fileids,
-      is_paid, price
+      is_paid, price, comments_disabled
     )
     VALUES (
       ${id}, ${user_id}, ${content},
@@ -66,7 +67,8 @@ const createPost = async (postData) => {
       ${hidden_media_urls ? JSON.stringify(hidden_media_urls) : null},
       ${hidden_media_fileids ? JSON.stringify(hidden_media_fileids) : null},
       ${is_paid || false},
-      ${price || null}
+      ${price || null},
+      ${comments_disabled || false}
     )
     RETURNING *
   `;
@@ -90,7 +92,7 @@ const findPostsByUserId = async (userId, limit, offset) => {
   const posts = await db`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
-           p.is_paid, p.price,
+           p.is_paid, p.price, p.comments_disabled,
            u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
@@ -117,7 +119,7 @@ const getPostByIdWithUser = async (postId) => {
   const result = await db`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
-           p.is_paid, p.price,
+           p.is_paid, p.price, p.comments_disabled,
            u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) as likes, false as isLiked
     FROM posts p
@@ -153,8 +155,15 @@ const deletePostById = async (postId) => {
 };
 
 const getMediaFileidsByPostId = async (postId) => {
-  const result = await db`SELECT media_fileids FROM posts WHERE id = ${postId}`;
-  return result.length > 0 ? result[0].media_fileids : null;
+  const result =
+    await db`SELECT media_fileids, hidden_media_fileids FROM posts WHERE id = ${postId}`;
+  if (result.length === 0) return [];
+  const { media_fileids, hidden_media_fileids } = result[0];
+  const pub = Array.isArray(media_fileids) ? media_fileids : [];
+  const hidden = Array.isArray(hidden_media_fileids)
+    ? hidden_media_fileids
+    : [];
+  return [...pub, ...hidden];
 };
 
 const checkIsFollowing = async (followerId, followingId) => {

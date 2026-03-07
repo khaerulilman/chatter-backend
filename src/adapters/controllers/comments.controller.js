@@ -64,6 +64,10 @@ const createComment = async (req, res) => {
       return res.status(404).json({ message: error.message });
     }
 
+    if (error.message === "Comments are disabled for this post.") {
+      return res.status(403).json({ message: error.message });
+    }
+
     res.status(500).json({ message: "Internal server error." });
   }
 };
