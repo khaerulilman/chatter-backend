@@ -31,3 +31,22 @@ export const verifyToken = async (req, res, next) => {
       .json({ message: "Token tidak valid", error: error.message });
   }
 };
+
+// Optional auth: sets req.user if valid token present, but doesn't block
+export const optionalAuth = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return next();
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await db`
+      SELECT id, token FROM users WHERE id = ${decoded.id}
+    `;
+    if (user.length > 0 && user[0].token === token) {
+      req.user = user[0];
+    }
+  } catch {
+    // Ignore invalid tokens — proceed as unauthenticated
+  }
+  next();
+};

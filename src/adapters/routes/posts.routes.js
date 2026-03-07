@@ -1,12 +1,14 @@
 import express from "express";
 import multer from "multer";
-import { verifyToken } from "../middleware/auth.middleware.js";
+import { verifyToken, optionalAuth } from "../middleware/auth.middleware.js";
 import {
   getPosts,
   getPostsByUserId,
   createPost,
   getPostById,
   deletePost,
+  purchasePost,
+  getPurchaseActivity,
 } from "../controllers/posts.controller.js";
 import {
   likePost,
@@ -25,15 +27,19 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const postUpload = multer({ storage: storage });
 
-router.get("/", getPosts);
-router.get("/user/:userId", getPostsByUserId);
+router.get("/", optionalAuth, getPosts);
+router.get("/user/:userId", optionalAuth, getPostsByUserId);
 router.get("/saved", verifyToken, getSavedPosts);
-router.get("/:postId", getPostById);
+router.get("/purchases/activity", verifyToken, getPurchaseActivity);
+router.get("/:postId", optionalAuth, getPostById);
 
 router.post(
   "/",
   verifyToken,
-  postUpload.fields([{ name: "media", maxCount: 30 }]),
+  postUpload.fields([
+    { name: "media", maxCount: 30 },
+    { name: "hidden_media", maxCount: 30 },
+  ]),
   createPost,
 );
 
@@ -43,6 +49,8 @@ router.get("/:postId/likes/count", getLikeCount);
 
 router.patch("/:postId/saves", verifyToken, toggleSavePost);
 router.get("/:postId/saves", verifyToken, getSaveStatus);
+
+router.post("/:postId/purchase", verifyToken, purchasePost);
 
 router.delete("/:postId", verifyToken, deletePost);
 

@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { verifyToken } from "../middleware/auth.middleware.js";
+import { verifyToken, optionalAuth } from "../middleware/auth.middleware.js";
 import {
   getUsers,
   getUserByUsername,
@@ -15,7 +15,7 @@ const profileUpload = multer();
 router.get("/", getUsers);
 
 // Get all posts by userId
-router.get("/:userId/posts", getPostsByUser);
+router.get("/:userId/posts", optionalAuth, getPostsByUser);
 
 // Public route: get profile by username (no token required)
 router.get("/:username", getUserByUsername);

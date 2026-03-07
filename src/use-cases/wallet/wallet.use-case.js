@@ -134,16 +134,16 @@ export const makeWalletUseCases = ({
       newStatus = "pending";
     }
 
-    // Update transaction
-    await walletRepository.updateTransactionStatus(
+    // Update transaction — returns null if already settled (idempotency guard)
+    const updated = await walletRepository.updateTransactionStatus(
       orderId,
       newStatus,
       paymentType,
       midtransTransactionId,
     );
 
-    // If success, add balance to wallet
-    if (newStatus === "success") {
+    // Only add balance if this call was the one that transitioned to success
+    if (newStatus === "success" && updated) {
       await walletRepository.addBalance(tx.user_id, tx.amount);
     }
 
@@ -211,16 +211,16 @@ export const makeWalletUseCases = ({
       newStatus = "pending";
     }
 
-    // Update transaction in DB
-    await walletRepository.updateTransactionStatus(
+    // Update transaction in DB — returns null if already settled (idempotency guard)
+    const updated = await walletRepository.updateTransactionStatus(
       orderId,
       newStatus,
       paymentType,
       midtransTransactionId,
     );
 
-    // If success, add balance
-    if (newStatus === "success" && tx.status !== "success") {
+    // Only add balance if this call was the one that transitioned to success
+    if (newStatus === "success" && updated) {
       const wallet = await walletRepository.addBalance(tx.user_id, tx.amount);
       return { status: newStatus, balance: Number(wallet.balance) };
     }

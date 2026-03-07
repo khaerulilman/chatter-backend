@@ -40,10 +40,12 @@ const getPostsByUser = async (req, res) => {
       return res.status(400).json({ message: "User ID is required." });
     }
 
+    const requesterId = req.user?.id || null;
     const posts = await getPostsByUserIdService(
       userId,
       parseInt(page),
       parseInt(limit),
+      requesterId,
     );
     res.status(200).json({
       message: "Posts fetched successfully",

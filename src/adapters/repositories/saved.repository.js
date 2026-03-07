@@ -21,7 +21,10 @@ const deleteSavedPost = async (userId, postId) => {
 
 const findAllSavedPostsByUserId = async (userId, limit, offset) => {
   return await db`
-    SELECT p.id, p.content, p.media_url, p.created_at, u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
+    SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
+           p.is_follower_only, p.hidden_content, p.hidden_media_urls,
+           p.is_paid, p.price,
+           u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
            COALESCE(l.like_count, 0) AS likes, false AS "isLiked",
            sp.created_at AS saved_at
     FROM saved_posts sp

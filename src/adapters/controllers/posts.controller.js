@@ -6,6 +6,7 @@ const {
   createPostService,
   getPostByIdService,
   deletePostService,
+  purchasePostService,
 } = postUseCases;
 
 const getPosts = async (req, res) => {
@@ -16,7 +17,8 @@ const getPosts = async (req, res) => {
       Math.min(100, parseInt(req.query.limit, 10) || 20),
     );
 
-    const posts = await getPostsService(page, limit);
+    const requesterId = req.user?.id || null;
+    const posts = await getPostsService(page, limit, requesterId);
     res.status(200).json({
       message: "Posts fetched successfully",
       data: posts,
@@ -41,7 +43,13 @@ const getPostsByUserId = async (req, res) => {
       Math.min(100, parseInt(req.query.limit, 10) || 20),
     );
 
-    const posts = await getPostsByUserIdService(userId, page, limit);
+    const requesterId = req.user?.id || null;
+    const posts = await getPostsByUserIdService(
+      userId,
+      page,
+      limit,
+      requesterId,
+    );
     res.status(200).json({
       message: "Posts fetched successfully",
       data: posts,
@@ -54,15 +62,28 @@ const getPostsByUserId = async (req, res) => {
 
 const createPost = async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, is_follower_only, is_paid, price, hidden_content } =
+      req.body;
 
     if (!content) {
       return res.status(400).json({ message: "Content is required" });
     }
 
     const userId = req.user.id;
+    const isFollowerOnly =
+      is_follower_only === "true" || is_follower_only === true;
+    const isPaid = is_paid === "true" || is_paid === true;
 
-    const newPost = await createPostService(userId, content, req.files);
+    const newPost = await createPostService(userId, content, req.files, {
+      isFollowerOnly: isFollowerOnly && !isPaid,
+      isPaid,
+      price: isPaid ? price : null,
+      hiddenContent: isFollowerOnly || isPaid ? hidden_content || null : null,
+      hiddenMediaFiles:
+        (isFollowerOnly || isPaid) && req.files?.hidden_media
+          ? req.files.hidden_media
+          : null,
+    });
     return res.status(201).json({
       message: "Post created successfully",
       post: newPost,
@@ -84,7 +105,7 @@ const getPostById = async (req, res) => {
       return res.status(400).json({ message: "Post ID is required." });
     }
 
-    const post = await getPostByIdService(postId);
+    const post = await getPostByIdService(postId, req.user?.id || null);
 
     res.status(200).json({
       message: "Post retrieved successfully.",
@@ -137,5 +158,70 @@ const deletePost = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+const purchasePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const buyerId = req.user.id;
 
-export { getPosts, getPostsByUserId, createPost, getPostById, deletePost };
+    if (!postId) {
+      return res.status(400).json({ message: "Post ID is required." });
+    }
+
+    const result = await purchasePostService(postId, buyerId);
+
+    res.status(200).json({
+      message: result.message,
+      amount: result.amount,
+    });
+  } catch (error) {
+    console.error("Error purchasing post:", error);
+
+    const clientErrors = [
+      "Invalid postId format.",
+      "Post not found.",
+      "This post is not a paid post.",
+      "You cannot purchase your own post.",
+      "You have already purchased this post.",
+      "Insufficient balance.",
+    ];
+
+    if (clientErrors.includes(error.message)) {
+      const status = error.message === "Post not found." ? 404 : 400;
+      return res.status(status).json({ message: error.message });
+    }
+
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+const getPurchaseActivity = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const result = await postUseCases.getPurchaseActivityService(
+      userId,
+      page,
+      limit,
+    );
+    res.status(200).json({ data: result });
+  } catch (error) {
+    console.error("Get purchase activity error:", error);
+    res
+      .status(500)
+      .json({
+        message: "Failed to get purchase activity",
+        error: error.message,
+      });
+  }
+};
+
+export {
+  getPosts,
+  getPostsByUserId,
+  createPost,
+  getPostById,
+  deletePost,
+  purchasePost,
+  getPurchaseActivity,
+};

@@ -63,7 +63,8 @@ export const findTransactionByOrderId = async (orderId) => {
   return result.length > 0 ? result[0] : null;
 };
 
-// Update transaction status
+// Update transaction status — only updates if not already settled (success/failed/expired)
+// Returns the updated row, or null if the row was already in a terminal state (idempotency guard)
 export const updateTransactionStatus = async (
   orderId,
   status,
@@ -77,6 +78,7 @@ export const updateTransactionStatus = async (
         midtrans_transaction_id = ${midtransTransactionId || null},
         updated_at = NOW()
     WHERE midtrans_order_id = ${orderId}
+      AND status NOT IN ('success', 'failed', 'expired')
     RETURNING *
   `;
   return result.length > 0 ? result[0] : null;
