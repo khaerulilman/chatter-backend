@@ -8,7 +8,11 @@ import {
   getPostById,
   deletePost,
 } from "../controllers/posts.controller.js";
-import { likePost, getLikeStatus } from "../controllers/likes.controller.js";
+import {
+  likePost,
+  getLikeStatus,
+  getLikeCount,
+} from "../controllers/likes.controller.js";
 import {
   toggleSavePost,
   getSaveStatus,
@@ -35,6 +39,7 @@ router.post(
 
 router.patch("/:postId/likes", verifyToken, likePost);
 router.get("/:postId/likes", verifyToken, getLikeStatus);
+router.get("/:postId/likes/count", getLikeCount);
 
 router.patch("/:postId/saves", verifyToken, toggleSavePost);
 router.get("/:postId/saves", verifyToken, getSaveStatus);
