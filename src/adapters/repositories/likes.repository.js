@@ -8,6 +8,7 @@ const invalidateLikeCaches = async (userId, postId) => {
   await cacheService.del(`likes:count:${postId}`);
   await cacheService.del(`posts:detail:${postId}`);
   await cacheService.delByPattern("posts:all:*");
+  await cacheService.delByPattern("posts:user:*");
 };
 
 const findUserById = async (userId) => {

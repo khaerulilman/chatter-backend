@@ -73,8 +73,19 @@ export const makeLikeUseCases = ({
     return { isLiked, likeCount };
   };
 
+  const getLikeCountService = async (postId) => {
+    const post = await likeRepository.findPostById(postId);
+    if (!post) {
+      throw new Error("Post not found.");
+    }
+
+    const likeCount = await likeRepository.countLikesByPostId(postId);
+    return { likeCount };
+  };
+
   return {
     toggleLikeService,
     getLikeStatusService,
+    getLikeCountService,
   };
 };

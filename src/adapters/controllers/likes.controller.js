@@ -1,6 +1,7 @@
 import { likeUseCases } from "../../container.js";
 
-const { toggleLikeService, getLikeStatusService } = likeUseCases;
+const { toggleLikeService, getLikeStatusService, getLikeCountService } =
+  likeUseCases;
 
 const likePost = async (req, res) => {
   try {
@@ -72,4 +73,28 @@ const getLikeStatus = async (req, res) => {
   }
 };
 
-export { likePost, getLikeStatus };
+const getLikeCount = async (req, res) => {
+  try {
+    const { postId } = req.params;
+
+    if (!postId) {
+      return res.status(400).json({ message: "Post ID is required." });
+    }
+
+    const result = await getLikeCountService(postId);
+
+    res.status(200).json({
+      likeCount: result.likeCount,
+    });
+  } catch (error) {
+    console.error("Error getting like count:", error);
+
+    if (error.message === "Post not found.") {
+      return res.status(404).json({ message: error.message });
+    }
+
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export { likePost, getLikeStatus, getLikeCount };
