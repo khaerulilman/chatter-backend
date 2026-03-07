@@ -62,3 +62,47 @@ export const updateUserPassword = async (email, hashedPassword) => {
     WHERE email = ${email}
   `;
 };
+
+// ─── Refresh Token Operations ─────────────────────────────────────
+
+// Insert a new refresh token
+export const insertRefreshToken = async (id, userId, token, expiresAt) => {
+  await db`
+    INSERT INTO refresh_tokens (id, user_id, token, expires_at)
+    VALUES (${id}, ${userId}, ${token}, ${expiresAt})
+  `;
+};
+
+// Find refresh token by token string
+export const findRefreshToken = async (token) => {
+  const result = await db`
+    SELECT id, user_id, token, expires_at
+    FROM refresh_tokens
+    WHERE token = ${token}
+  `;
+  return result;
+};
+
+// Find user by ID with full profile data (for refresh)
+export const findUserFullById = async (userId) => {
+  const user = await db`
+    SELECT id, name, username, email, profile_picture, header_picture, created_at
+    FROM users WHERE id = ${userId}
+  `;
+  return user;
+};
+
+// Delete a specific refresh token
+export const deleteRefreshToken = async (token) => {
+  await db`DELETE FROM refresh_tokens WHERE token = ${token}`;
+};
+
+// Delete all refresh tokens for a user (logout all sessions)
+export const deleteRefreshTokensByUserId = async (userId) => {
+  await db`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
+};
+
+// Delete expired refresh tokens (cleanup)
+export const deleteExpiredRefreshTokens = async () => {
+  await db`DELETE FROM refresh_tokens WHERE expires_at < NOW()`;
+};

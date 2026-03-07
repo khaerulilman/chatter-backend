@@ -1,5 +1,18 @@
 import { authUseCases } from "../../container.js";
 
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Helper to set refresh token as HttpOnly cookie
+const setRefreshTokenCookie = (res, refreshToken) => {
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    path: "/api/auth",
+    maxAge: REFRESH_TOKEN_MAX_AGE,
+  });
+};
+
 // Register controller
 export const register = async (req, res) => {
   const { name, email, password, username } = req.body;
@@ -180,7 +193,16 @@ export const login = async (req, res) => {
 
   try {
     const result = await authUseCases.loginService(email, password);
-    res.status(200).json(result);
+
+    // Set refresh token as HttpOnly cookie
+    setRefreshTokenCookie(res, result.refreshToken);
+
+    // Return access token + user data in JSON (no refresh token in body)
+    res.status(200).json({
+      message: result.message,
+      data: result.data,
+      accessToken: result.accessToken,
+    });
   } catch (error) {
     console.error("Login error:", error);
     if (error.message === "Email tidak ditemukan") {
@@ -194,4 +216,45 @@ export const login = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+// Refresh token controller
+export const refresh = async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "Refresh token tidak ditemukan." });
+  }
+
+  try {
+    const result = await authUseCases.refreshTokenService(refreshToken);
+
+    // Set new refresh token cookie (rotation)
+    setRefreshTokenCookie(res, result.refreshToken);
+
+    res.status(200).json({
+      accessToken: result.accessToken,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    // Clear invalid cookie
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+    res.status(401).json({ message: error.message });
+  }
+};
+
+// Logout controller
+export const logout = async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  try {
+    await authUseCases.logoutService(refreshToken);
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+
+  // Always clear cookie
+  res.clearCookie("refreshToken", { path: "/api/auth" });
+  res.status(200).json({ message: "Logout berhasil." });
 };
