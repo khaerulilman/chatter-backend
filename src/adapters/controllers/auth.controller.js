@@ -1,5 +1,34 @@
 import { authUseCases } from "../../container.js";
 
+// Verify Cloudflare Turnstile token
+const verifyTurnstile = async (token, remoteip) => {
+  const params = new URLSearchParams({
+    secret: process.env.TURNSTILE_SECRET_KEY,
+    response: token,
+    ...(remoteip && { remoteip }),
+  });
+
+  const res = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    { method: "POST", body: params },
+  );
+  const data = await res.json();
+  return data.success === true;
+};
+
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Helper to set refresh token as HttpOnly cookie
+const setRefreshTokenCookie = (res, refreshToken) => {
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    path: "/api/auth",
+    maxAge: REFRESH_TOKEN_MAX_AGE,
+  });
+};
+
 // Register controller
 export const register = async (req, res) => {
   const { name, email, password, username } = req.body;
@@ -172,15 +201,35 @@ export const resetPassword = async (req, res) => {
 
 // Login controller
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email dan password diperlukan." });
   }
 
+  // Verify Turnstile before hitting the database
+  const ip = req.headers["cf-connecting-ip"] || req.ip;
+  const turnstileOk = await verifyTurnstile(turnstileToken, ip).catch(
+    () => false,
+  );
+  if (!turnstileOk) {
+    return res
+      .status(400)
+      .json({ message: "Security check failed. Please try again." });
+  }
+
   try {
     const result = await authUseCases.loginService(email, password);
-    res.status(200).json(result);
+
+    // Set refresh token as HttpOnly cookie
+    setRefreshTokenCookie(res, result.refreshToken);
+
+    // Return access token + user data in JSON (no refresh token in body)
+    res.status(200).json({
+      message: result.message,
+      data: result.data,
+      accessToken: result.accessToken,
+    });
   } catch (error) {
     console.error("Login error:", error);
     if (error.message === "Email tidak ditemukan") {
@@ -194,4 +243,45 @@ export const login = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+// Refresh token controller
+export const refresh = async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "Refresh token tidak ditemukan." });
+  }
+
+  try {
+    const result = await authUseCases.refreshTokenService(refreshToken);
+
+    // Set new refresh token cookie (rotation)
+    setRefreshTokenCookie(res, result.refreshToken);
+
+    res.status(200).json({
+      accessToken: result.accessToken,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    // Clear invalid cookie
+    res.clearCookie("refreshToken", { path: "/api/auth" });
+    res.status(401).json({ message: error.message });
+  }
+};
+
+// Logout controller
+export const logout = async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  try {
+    await authUseCases.logoutService(refreshToken);
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+
+  // Always clear cookie
+  res.clearCookie("refreshToken", { path: "/api/auth" });
+  res.status(200).json({ message: "Logout berhasil." });
 };

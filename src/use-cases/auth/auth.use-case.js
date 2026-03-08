@@ -359,9 +359,20 @@ export const makeAuthUseCases = ({
       throw new Error("Password salah");
     }
 
-    const token = tokenService.sign({ id: currentUser.id });
+    // Generate access token (short-lived, 15 min)
+    const accessToken = tokenService.sign({ id: currentUser.id });
 
-    await authRepository.updateUserToken(currentUser.id, token);
+    // Generate refresh token (random string, 7 days)
+    const refreshToken = tokenService.generateRefreshToken();
+    const refreshTokenId = idService.generateId(21);
+    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await authRepository.insertRefreshToken(
+      refreshTokenId,
+      currentUser.id,
+      refreshToken,
+      refreshExpiresAt,
+    );
 
     return {
       message: "Login Berhasil",
@@ -374,8 +385,74 @@ export const makeAuthUseCases = ({
         header_picture: currentUser.header_picture || DEFAULT_HEADER_PICTURE,
         created_at: currentUser.created_at,
       },
-      token,
+      accessToken,
+      refreshToken,
     };
+  };
+
+  // Refresh token service — rotate refresh token & issue new access token
+  const refreshTokenService = async (oldRefreshToken) => {
+    const tokens = await authRepository.findRefreshToken(oldRefreshToken);
+
+    if (tokens.length === 0) {
+      throw new Error("Refresh token tidak valid.");
+    }
+
+    const storedToken = tokens[0];
+
+    // Check expiry
+    if (new Date() > new Date(storedToken.expires_at)) {
+      await authRepository.deleteRefreshToken(oldRefreshToken);
+      throw new Error("Refresh token telah kadaluarsa.");
+    }
+
+    // Delete old refresh token (rotation)
+    await authRepository.deleteRefreshToken(oldRefreshToken);
+
+    // Get user data
+    const users = await authRepository.findUserFullById(storedToken.user_id);
+    if (users.length === 0) {
+      throw new Error("User tidak ditemukan.");
+    }
+
+    const currentUser = users[0];
+
+    // Generate new access token
+    const accessToken = tokenService.sign({ id: currentUser.id });
+
+    // Generate new refresh token (rotation)
+    const newRefreshToken = tokenService.generateRefreshToken();
+    const newRefreshTokenId = idService.generateId(21);
+    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await authRepository.insertRefreshToken(
+      newRefreshTokenId,
+      currentUser.id,
+      newRefreshToken,
+      refreshExpiresAt,
+    );
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      data: {
+        id: currentUser.id,
+        name: currentUser.name,
+        username: currentUser.username,
+        email: currentUser.email,
+        profile_picture: currentUser.profile_picture || DEFAULT_PROFILE_PICTURE,
+        header_picture: currentUser.header_picture || DEFAULT_HEADER_PICTURE,
+        created_at: currentUser.created_at,
+      },
+    };
+  };
+
+  // Logout service — delete refresh token
+  const logoutService = async (refreshToken) => {
+    if (refreshToken) {
+      await authRepository.deleteRefreshToken(refreshToken);
+    }
+    return { message: "Logout berhasil." };
   };
 
   return {
@@ -386,5 +463,7 @@ export const makeAuthUseCases = ({
     resendForgotPasswordOtpService,
     resetPasswordService,
     loginService,
+    refreshTokenService,
+    logoutService,
   };
 };

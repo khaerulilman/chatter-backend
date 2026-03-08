@@ -3,8 +3,10 @@ import express from "express";
 import path from "path";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import routes from "./src/adapters/routes/index.js";
 import redis from "./src/frameworks/redis/redis.js";
+import { generalLimiter } from "./src/adapters/middleware/rate-limit.middleware.js";
 const app = express();
 
 // Set view engine
@@ -13,6 +15,9 @@ app.set("views", path.join(process.cwd(), "views")); // Views folder path
 
 // Middleware untuk parsing JSON
 app.use(express.json());
+
+// Cookie parser middleware
+app.use(cookieParser());
 
 // Security Helmet Middleware
 app.use(helmet());
@@ -38,13 +43,14 @@ app.use(
       // Izinkan request
       return callback(null, true);
     },
+    credentials: true, // Izinkan cookie dikirim cross-origin
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], // Metode HTTP yang diizinkan
     allowedHeaders: ["Content-Type", "Authorization"], // Header yang diizinkan
   }),
 );
 
 // API Routes
-app.use("/api", routes);
+app.use("/api", generalLimiter, routes);
 
 // Jalankan server
 const PORT = process.env.PORT || 3000;
