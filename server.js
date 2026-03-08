@@ -20,7 +20,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Security Helmet Middleware
-app.use(helmet());
+// Disable CSP for API server — CSP is designed for HTML documents, not API responses.
+// Default helmet CSP (default-src 'self') causes browser warnings and can interfere
+// when API responses are proxied through the frontend domain.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // Daftar origin yang diizinkan
 const allowedOrigins = process.env.ALLOWED_ORIGINS
