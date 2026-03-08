@@ -31,7 +31,7 @@ export const findNotificationsByRecipient = async (recipientId) => {
       n.type,
       n.entity_id,
       n.is_read,
-      n.created_at,
+      to_char(n.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
       u.id        AS actor_id,
       u.name      AS actor_name,
       u.username  AS actor_username,

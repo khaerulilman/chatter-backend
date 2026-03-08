@@ -6,6 +6,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import routes from "./src/adapters/routes/index.js";
 import redis from "./src/frameworks/redis/redis.js";
+import { generalLimiter } from "./src/adapters/middleware/rate-limit.middleware.js";
 const app = express();
 
 // Set view engine
@@ -49,7 +50,7 @@ app.use(
 );
 
 // API Routes
-app.use("/api", routes);
+app.use("/api", generalLimiter, routes);
 
 // Jalankan server
 const PORT = process.env.PORT || 3000;

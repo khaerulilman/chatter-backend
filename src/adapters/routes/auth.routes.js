@@ -10,20 +10,28 @@ import {
   refresh,
   logout,
 } from "../controllers/auth.controller.js";
+import {
+  authLimiter,
+  sensitiveActionLimiter,
+} from "../middleware/rate-limit.middleware.js";
 
 const router = express.Router();
 
 // Auth routes
-router.post("/register", register);
-router.post("/verify-otp", verifyOtp);
-router.post("/resend-otp", resendOtp);
-router.post("/login", login);
+router.post("/register", authLimiter, register);
+router.post("/verify-otp", authLimiter, verifyOtp);
+router.post("/resend-otp", sensitiveActionLimiter, resendOtp);
+router.post("/login", authLimiter, login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 
 // Forgot password routes
-router.post("/forgot-password", forgotPassword);
-router.post("/forgot-password/resend-otp", resendForgotPasswordOtp);
-router.post("/reset-password", resetPassword);
+router.post("/forgot-password", sensitiveActionLimiter, forgotPassword);
+router.post(
+  "/forgot-password/resend-otp",
+  sensitiveActionLimiter,
+  resendForgotPasswordOtp,
+);
+router.post("/reset-password", sensitiveActionLimiter, resetPassword);
 
 export default router;

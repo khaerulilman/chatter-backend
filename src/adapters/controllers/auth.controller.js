@@ -1,5 +1,21 @@
 import { authUseCases } from "../../container.js";
 
+// Verify Cloudflare Turnstile token
+const verifyTurnstile = async (token, remoteip) => {
+  const params = new URLSearchParams({
+    secret: process.env.TURNSTILE_SECRET_KEY,
+    response: token,
+    ...(remoteip && { remoteip }),
+  });
+
+  const res = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    { method: "POST", body: params },
+  );
+  const data = await res.json();
+  return data.success === true;
+};
+
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Helper to set refresh token as HttpOnly cookie
@@ -185,10 +201,21 @@ export const resetPassword = async (req, res) => {
 
 // Login controller
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email dan password diperlukan." });
+  }
+
+  // Verify Turnstile before hitting the database
+  const ip = req.headers["cf-connecting-ip"] || req.ip;
+  const turnstileOk = await verifyTurnstile(turnstileToken, ip).catch(
+    () => false,
+  );
+  if (!turnstileOk) {
+    return res
+      .status(400)
+      .json({ message: "Security check failed. Please try again." });
   }
 
   try {
