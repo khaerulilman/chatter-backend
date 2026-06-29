@@ -105,7 +105,9 @@ const withTimeout = async (action, operationName) => {
     new Promise((_, reject) => {
       setTimeout(() => {
         reject(
-          new Error(`Upstash ${operationName} timeout after ${UPSTASH_TIMEOUT_MS}ms`),
+          new Error(
+            `Upstash ${operationName} timeout after ${UPSTASH_TIMEOUT_MS}ms`,
+          ),
         );
       }, UPSTASH_TIMEOUT_MS);
     }),
@@ -211,7 +213,9 @@ if (useUpstash) {
     },
     scan: async (cursor, ...args) => {
       const pattern = parseScanPattern(args);
-      const upstashResult = await runUpstash("SCAN", () => client.keys(pattern));
+      const upstashResult = await runUpstash("SCAN", () =>
+        client.keys(pattern),
+      );
 
       if (upstashResult.ok) {
         return ["0", upstashResult.value || []];
@@ -231,7 +235,9 @@ if (useUpstash) {
 
   console.log("Upstash Redis enabled with fail-fast fallback to memory store");
 } else {
-  console.warn("Upstash credentials not found. Using in-memory Redis fallback.");
+  console.warn(
+    "Upstash credentials not found. Using in-memory Redis fallback.",
+  );
   redis = memoryRedis;
 }
 
