@@ -9,7 +9,7 @@ const {
   purchasePostService,
 } = postUseCases;
 
-const getPosts = async (req, res) => {
+const getPosts = async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(
@@ -17,19 +17,42 @@ const getPosts = async (req, res) => {
       Math.min(100, parseInt(req.query.limit, 10) || 20),
     );
 
+    if (page < 1 || limit < 1 || limit > 100) {
+      return res
+        .status(400)
+        .json({ message: "Invalid page or limit parameters" });
+    }
+
     const requesterId = req.user?.id || null;
-    const posts = await getPostsService(page, limit, requesterId);
+
+    // Set a timeout for the query
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), 30000),
+    );
+
+    const posts = await Promise.race([
+      getPostsService(page, limit, requesterId),
+      timeoutPromise,
+    ]);
+
     res.status(200).json({
       message: "Posts fetched successfully",
       data: posts,
     });
   } catch (error) {
-    console.error("Error fetching posts:", error);
-    res.status(500).json({ message: "Internal server error." });
+    console.error("[getPosts] Error:", error.message, error.stack);
+
+    if (error.message === "Request timeout") {
+      return res
+        .status(504)
+        .json({ message: "Request timeout - please try again" });
+    }
+
+    next(error);
   }
 };
 
-const getPostsByUserId = async (req, res) => {
+const getPostsByUserId = async (req, res, next) => {
   const { userId } = req.params;
 
   try {
@@ -43,24 +66,42 @@ const getPostsByUserId = async (req, res) => {
       Math.min(100, parseInt(req.query.limit, 10) || 20),
     );
 
+    if (page < 1 || limit < 1 || limit > 100) {
+      return res
+        .status(400)
+        .json({ message: "Invalid page or limit parameters" });
+    }
+
     const requesterId = req.user?.id || null;
-    const posts = await getPostsByUserIdService(
-      userId,
-      page,
-      limit,
-      requesterId,
+
+    // Set a timeout for the query
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), 30000),
     );
+
+    const posts = await Promise.race([
+      getPostsByUserIdService(userId, page, limit, requesterId),
+      timeoutPromise,
+    ]);
+
     res.status(200).json({
       message: "Posts fetched successfully",
       data: posts,
     });
   } catch (error) {
-    console.error("Error fetching posts by user:", error);
-    res.status(500).json({ message: "Internal server error." });
+    console.error("[getPostsByUserId] Error:", error.message, error.stack);
+
+    if (error.message === "Request timeout") {
+      return res
+        .status(504)
+        .json({ message: "Request timeout - please try again" });
+    }
+
+    next(error);
   }
 };
 
-const createPost = async (req, res) => {
+const createPost = async (req, res, next) => {
   try {
     const {
       content,
@@ -98,15 +139,12 @@ const createPost = async (req, res) => {
       post: newPost,
     });
   } catch (error) {
-    console.error("Error creating post:", error);
-    return res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    console.error("[createPost] Error:", error.message, error.stack);
+    next(error);
   }
 };
 
-const getPostById = async (req, res) => {
+const getPostById = async (req, res, next) => {
   try {
     const { postId } = req.params;
 
@@ -121,7 +159,7 @@ const getPostById = async (req, res) => {
       data: post,
     });
   } catch (error) {
-    console.error("Error retrieving post:", error);
+    console.error("[getPostById] Error:", error.message, error.stack);
 
     if (error.message === "Invalid postId format.") {
       return res.status(400).json({ message: error.message });
@@ -131,11 +169,11 @@ const getPostById = async (req, res) => {
       return res.status(404).json({ message: error.message });
     }
 
-    res.status(500).json({ message: "Internal server error." });
+    next(error);
   }
 };
 
-const deletePost = async (req, res) => {
+const deletePost = async (req, res, next) => {
   try {
     const { postId } = req.params;
     const userId = req.user.id;
@@ -150,7 +188,7 @@ const deletePost = async (req, res) => {
       message: "Post deleted successfully.",
     });
   } catch (error) {
-    console.error("Error deleting post:", error);
+    console.error("[deletePost] Error:", error.message, error.stack);
 
     if (error.message === "Invalid postId format.") {
       return res.status(400).json({ message: error.message });
@@ -164,10 +202,10 @@ const deletePost = async (req, res) => {
       return res.status(403).json({ message: error.message });
     }
 
-    res.status(500).json({ message: "Internal server error." });
+    next(error);
   }
 };
-const purchasePost = async (req, res) => {
+const purchasePost = async (req, res, next) => {
   try {
     const { postId } = req.params;
     const buyerId = req.user.id;
@@ -183,7 +221,7 @@ const purchasePost = async (req, res) => {
       amount: result.amount,
     });
   } catch (error) {
-    console.error("Error purchasing post:", error);
+    console.error("[purchasePost] Error:", error.message, error.stack);
 
     const clientErrors = [
       "Invalid postId format.",
@@ -199,10 +237,10 @@ const purchasePost = async (req, res) => {
       return res.status(status).json({ message: error.message });
     }
 
-    res.status(500).json({ message: "Internal server error." });
+    next(error);
   }
 };
-const getPurchaseActivity = async (req, res) => {
+const getPurchaseActivity = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
@@ -215,11 +253,8 @@ const getPurchaseActivity = async (req, res) => {
     );
     res.status(200).json({ data: result });
   } catch (error) {
-    console.error("Get purchase activity error:", error);
-    res.status(500).json({
-      message: "Failed to get purchase activity",
-      error: error.message,
-    });
+    console.error("[getPurchaseActivity] Error:", error.message, error.stack);
+    next(error);
   }
 };
 

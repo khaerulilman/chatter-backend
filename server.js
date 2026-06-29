@@ -55,10 +55,71 @@ app.use(
 // API Routes
 app.use("/api", generalLimiter, routes);
 
+// Global error handling middleware
+// Must be after all other middleware and routes
+app.use((err, req, res, next) => {
+  // Ensure CORS headers are sent even on error
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : [];
+  const origin = req.headers.origin;
+
+  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal server error";
+
+  console.error(`[${new Date().toISOString()}] Error:`, {
+    statusCode,
+    message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+  });
+
+  res.status(statusCode).json({
+    message,
+    error: process.env.NODE_ENV === "development" ? err : undefined,
+  });
+});
+
+// Handle 404 errors
+app.use((req, res) => {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : [];
+  const origin = req.headers.origin;
+
+  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+
+  res.status(404).json({ message: "Route not found" });
+});
+
 // Jalankan server
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  process.exit(1);
 });
 
 // Graceful shutdown
