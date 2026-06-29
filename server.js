@@ -9,6 +9,9 @@ import redis from "./src/frameworks/redis/redis.js";
 import { generalLimiter } from "./src/adapters/middleware/rate-limit.middleware.js";
 const app = express();
 
+// Trust Vercel/edge proxy so req.ip uses forwarded client IP correctly.
+app.set("trust proxy", 1);
+
 // Set view engine
 app.set("view engine", "ejs");
 app.set("views", path.join(process.cwd(), "views")); // Views folder path
@@ -26,9 +29,27 @@ app.use(cookieParser());
 app.use(helmet({ contentSecurityPolicy: false }));
 
 // Daftar origin yang diizinkan
+const defaultAllowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://chatter-backends.vercel.app",
+  "https://chatter-new.vercel.app",
+];
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
-  : [];
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  : defaultAllowedOrigins;
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+
+  // If env var is accidentally empty in deployment, fail open to avoid CORS lockout.
+  if (allowedOrigins.length === 0) return true;
+
+  return allowedOrigins.includes(origin);
+};
 
 // Konfigurasi CORS
 app.use(
@@ -38,7 +59,7 @@ app.use(
       if (!origin) return callback(null, true);
 
       // Cek apakah origin ada di daftar allowedOrigins
-      if (allowedOrigins.indexOf(origin) === -1) {
+      if (!isOriginAllowed(origin)) {
         const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
         return callback(new Error(msg), false);
       }
@@ -59,12 +80,9 @@ app.use("/api", generalLimiter, routes);
 // Must be after all other middleware and routes
 app.use((err, req, res, next) => {
   // Ensure CORS headers are sent even on error
-  const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",")
-    : [];
   const origin = req.headers.origin;
 
-  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+  if (isOriginAllowed(origin)) {
     res.header("Access-Control-Allow-Origin", origin || "*");
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
@@ -90,12 +108,9 @@ app.use((err, req, res, next) => {
 
 // Handle 404 errors
 app.use((req, res) => {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",")
-    : [];
   const origin = req.headers.origin;
 
-  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+  if (isOriginAllowed(origin)) {
     res.header("Access-Control-Allow-Origin", origin || "*");
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");

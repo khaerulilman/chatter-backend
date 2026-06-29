@@ -9,6 +9,8 @@ const {
   purchasePostService,
 } = postUseCases;
 
+const VERCEL_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 8500);
+
 const getPosts = async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -27,7 +29,7 @@ const getPosts = async (req, res, next) => {
 
     // Set a timeout for the query
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), 30000),
+      setTimeout(() => reject(new Error("Request timeout")), VERCEL_TIMEOUT_MS),
     );
 
     const posts = await Promise.race([
@@ -76,7 +78,7 @@ const getPostsByUserId = async (req, res, next) => {
 
     // Set a timeout for the query
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), 30000),
+      setTimeout(() => reject(new Error("Request timeout")), VERCEL_TIMEOUT_MS),
     );
 
     const posts = await Promise.race([
