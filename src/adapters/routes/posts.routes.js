@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { verifyToken, optionalAuth } from "../middleware/auth.middleware.js";
+import { wrapAsync } from "../middleware/async-error.middleware.js";
 import {
   getPosts,
   getPostsByUserId,
@@ -27,11 +28,11 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const postUpload = multer({ storage: storage });
 
-router.get("/", optionalAuth, getPosts);
-router.get("/user/:userId", optionalAuth, getPostsByUserId);
-router.get("/saved", verifyToken, getSavedPosts);
-router.get("/purchases/activity", verifyToken, getPurchaseActivity);
-router.get("/:postId", optionalAuth, getPostById);
+router.get("/", optionalAuth, wrapAsync(getPosts));
+router.get("/user/:userId", optionalAuth, wrapAsync(getPostsByUserId));
+router.get("/saved", verifyToken, wrapAsync(getSavedPosts));
+router.get("/purchases/activity", verifyToken, wrapAsync(getPurchaseActivity));
+router.get("/:postId", optionalAuth, wrapAsync(getPostById));
 
 router.post(
   "/",
@@ -40,18 +41,18 @@ router.post(
     { name: "media", maxCount: 30 },
     { name: "hidden_media", maxCount: 30 },
   ]),
-  createPost,
+  wrapAsync(createPost),
 );
 
-router.patch("/:postId/likes", verifyToken, likePost);
-router.get("/:postId/likes", verifyToken, getLikeStatus);
-router.get("/:postId/likes/count", getLikeCount);
+router.patch("/:postId/likes", verifyToken, wrapAsync(likePost));
+router.get("/:postId/likes", verifyToken, wrapAsync(getLikeStatus));
+router.get("/:postId/likes/count", wrapAsync(getLikeCount));
 
-router.patch("/:postId/saves", verifyToken, toggleSavePost);
-router.get("/:postId/saves", verifyToken, getSaveStatus);
+router.patch("/:postId/saves", verifyToken, wrapAsync(toggleSavePost));
+router.get("/:postId/saves", verifyToken, wrapAsync(getSaveStatus));
 
-router.post("/:postId/purchase", verifyToken, purchasePost);
+router.post("/:postId/purchase", verifyToken, wrapAsync(purchasePost));
 
-router.delete("/:postId", verifyToken, deletePost);
+router.delete("/:postId", verifyToken, wrapAsync(deletePost));
 
 export default router;
