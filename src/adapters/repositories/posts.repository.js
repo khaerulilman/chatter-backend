@@ -13,14 +13,14 @@ const findAllPosts = async (limit, offset) => {
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
            u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
-           COALESCE(l.like_count, 0) as likes, false as isLiked
+           COALESCE((
+             SELECT COUNT(*)::int
+             FROM likes lx
+             WHERE lx.post_id = p.id
+           ), 0) as likes,
+           false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
-    LEFT JOIN (
-      SELECT post_id, COUNT(*) as like_count 
-      FROM likes 
-      GROUP BY post_id
-    ) l ON p.id = l.post_id
     ORDER BY p.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
@@ -94,14 +94,14 @@ const findPostsByUserId = async (userId, limit, offset) => {
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
            u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
-           COALESCE(l.like_count, 0) as likes, false as isLiked
+           COALESCE((
+             SELECT COUNT(*)::int
+             FROM likes lx
+             WHERE lx.post_id = p.id
+           ), 0) as likes,
+           false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
-    LEFT JOIN (
-      SELECT post_id, COUNT(*) as like_count 
-      FROM likes 
-      GROUP BY post_id
-    ) l ON p.id = l.post_id
     WHERE p.user_id = ${userId}
     ORDER BY p.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -121,14 +121,14 @@ const getPostByIdWithUser = async (postId) => {
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
            u.name AS user_name, u.username, u.profile_picture, u.id AS user_id,
-           COALESCE(l.like_count, 0) as likes, false as isLiked
+           COALESCE((
+             SELECT COUNT(*)::int
+             FROM likes lx
+             WHERE lx.post_id = p.id
+           ), 0) as likes,
+           false as isLiked
     FROM posts p
     JOIN users u ON p.user_id = u.id
-    LEFT JOIN (
-      SELECT post_id, COUNT(*) as like_count 
-      FROM likes 
-      GROUP BY post_id
-    ) l ON p.id = l.post_id
     WHERE p.id = ${postId}
   `;
   const post = result.length > 0 ? result[0] : null;

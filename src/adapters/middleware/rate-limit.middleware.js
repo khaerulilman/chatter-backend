@@ -1,6 +1,23 @@
 import rateLimit from "express-rate-limit";
 import redis from "../../frameworks/redis/redis.js";
 
+const getClientIp = (req) => {
+  const xForwardedFor = req.headers["x-forwarded-for"];
+  if (typeof xForwardedFor === "string" && xForwardedFor.length > 0) {
+    return xForwardedFor.split(",")[0].trim();
+  }
+
+  const forwarded = req.headers.forwarded;
+  if (typeof forwarded === "string" && forwarded.length > 0) {
+    const match = forwarded.match(/for=(?:"?\[?)([^;,"]+)/i);
+    if (match?.[1]) {
+      return match[1].replace(/\]$/, "");
+    }
+  }
+
+  return req.ip || req.socket?.remoteAddress || "unknown";
+};
+
 /**
  * Custom Redis store for express-rate-limit that uses the existing Redis wrapper.
  * Compatible with both Upstash and ioredis instances.
@@ -26,7 +43,7 @@ class RedisStore {
       let resetTime;
 
       if (raw) {
-        const data = JSON.parse(raw);
+        const data = typeof raw === "string" ? JSON.parse(raw) : raw;
         hits = data.hits + 1;
         resetTime = new Date(data.resetTime);
         // Use remaining TTL, NOT the full window — prevents counter from never resetting
@@ -101,6 +118,8 @@ export const generalLimiter = rateLimit({
   max: 300,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  validate: false,
+  keyGenerator: (req) => getClientIp(req),
   store: new RedisStore({ prefix: "rl:general:", windowMs: 5 * 60 * 1000 }),
   message: {
     status: 429,
@@ -118,6 +137,8 @@ export const authLimiter = rateLimit({
   max: 15,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  validate: false,
+  keyGenerator: (req) => getClientIp(req),
   store: new RedisStore({ prefix: "rl:auth:", windowMs: 10 * 60 * 1000 }),
   message: {
     status: 429,
@@ -136,6 +157,8 @@ export const sensitiveActionLimiter = rateLimit({
   max: 10,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  validate: false,
+  keyGenerator: (req) => getClientIp(req),
   store: new RedisStore({ prefix: "rl:sensitive:", windowMs: 10 * 60 * 1000 }),
   message: {
     status: 429,

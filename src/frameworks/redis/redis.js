@@ -5,153 +5,234 @@ dotenv.config();
 
 const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
 const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const useUpstash = upstashUrl && upstashToken;
+const useUpstash = Boolean(upstashUrl && upstashToken);
+const UPSTASH_TIMEOUT_MS = Number(process.env.UPSTASH_TIMEOUT_MS || 700);
+const UPSTASH_FAILURE_THRESHOLD = Number(
+  process.env.UPSTASH_FAILURE_THRESHOLD || 3,
+);
+const UPSTASH_RECOVERY_MS = Number(process.env.UPSTASH_RECOVERY_MS || 60000);
 
 let redis;
 
+const parseTtl = (args) => {
+  if (args.length >= 2 && args[0] === "EX") {
+    const ttl = Number(args[1]);
+    return Number.isFinite(ttl) && ttl > 0 ? ttl : 300;
+  }
+  return 300;
+};
+
+const parseScanPattern = (args) => {
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === "MATCH" && args[i + 1]) {
+      return args[i + 1];
+    }
+  }
+  return "*";
+};
+
+const globToRegex = (pattern) => {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${escaped}$`);
+};
+
+const createMemoryRedis = () => {
+  const memory = new Map();
+
+  const getEntry = (key) => {
+    const item = memory.get(key);
+    if (!item) return null;
+
+    if (item.expiresAt && item.expiresAt <= Date.now()) {
+      memory.delete(key);
+      return null;
+    }
+
+    return item;
+  };
+
+  return {
+    status: "ready",
+    provider: "memory",
+    get: async (key) => {
+      const item = getEntry(key);
+      return item ? item.value : null;
+    },
+    set: async (key, value, ...args) => {
+      const ttl = parseTtl(args);
+      memory.set(key, {
+        value,
+        expiresAt: Date.now() + ttl * 1000,
+      });
+      return "OK";
+    },
+    del: async (...keys) => {
+      let deleted = 0;
+      for (const key of keys) {
+        if (memory.delete(key)) deleted += 1;
+      }
+      return deleted;
+    },
+    scan: async (cursor, ...args) => {
+      const pattern = parseScanPattern(args);
+      const regex = globToRegex(pattern);
+      const keys = [];
+
+      for (const key of memory.keys()) {
+        if (getEntry(key) && regex.test(key)) {
+          keys.push(key);
+        }
+      }
+
+      return [cursor === "0" ? "0" : String(cursor), keys];
+    },
+    flushdb: async () => {
+      memory.clear();
+      return "OK";
+    },
+    quit: async () => Promise.resolve(),
+  };
+};
+
+const memoryRedis = createMemoryRedis();
+
+const withTimeout = async (action, operationName) => {
+  return Promise.race([
+    action(),
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(`Upstash ${operationName} timeout after ${UPSTASH_TIMEOUT_MS}ms`),
+        );
+      }, UPSTASH_TIMEOUT_MS);
+    }),
+  ]);
+};
+
 if (useUpstash) {
-  // Use Upstash Redis
+  // Use Upstash Redis with automatic fallback to in-memory cache on failures.
   const client = new Redis({
     url: upstashUrl,
     token: upstashToken,
   });
 
-  console.log("Using Upstash Redis");
+  let upstashDisabled = false;
+  let failureCount = 0;
+  let lastFailureAt = 0;
 
-  // Create a wrapper to maintain compatibility with ioredis interface
+  const canUseUpstash = () => {
+    if (!upstashDisabled) return true;
+
+    if (Date.now() - lastFailureAt >= UPSTASH_RECOVERY_MS) {
+      upstashDisabled = false;
+      failureCount = 0;
+      return true;
+    }
+
+    return false;
+  };
+
+  const recordFailure = (operationName, err) => {
+    failureCount += 1;
+    lastFailureAt = Date.now();
+
+    console.error(`Upstash ${operationName} error:`, err.message);
+
+    if (failureCount >= UPSTASH_FAILURE_THRESHOLD) {
+      upstashDisabled = true;
+      console.warn(
+        `Upstash temporarily disabled for ${UPSTASH_RECOVERY_MS}ms. Falling back to in-memory Redis.`,
+      );
+    }
+  };
+
+  const runUpstash = async (operationName, action) => {
+    if (!canUseUpstash()) {
+      return { ok: false };
+    }
+
+    try {
+      const value = await withTimeout(action, operationName);
+      failureCount = 0;
+      return { ok: true, value };
+    } catch (err) {
+      recordFailure(operationName, err);
+      return { ok: false };
+    }
+  };
+
   redis = {
     status: "ready",
+    provider: "upstash-with-fallback",
     get: async (key) => {
-      try {
-        const value = await client.get(key);
+      const upstashResult = await runUpstash("GET", () => client.get(key));
+
+      if (upstashResult.ok) {
+        const value = upstashResult.value;
         if (value === null || value === undefined) return null;
+
         // Upstash auto-deserializes JSON, so re-serialize to string
         // so cache.service.js can JSON.parse() it as expected
-        return typeof value === "string" ? value : JSON.stringify(value);
-      } catch (err) {
-        console.error(`Upstash GET error [${key}]:`, err.message);
-        return null;
+        const normalized =
+          typeof value === "string" ? value : JSON.stringify(value);
+        await memoryRedis.set(key, normalized, "EX", 300);
+        return normalized;
       }
+
+      return memoryRedis.get(key);
     },
     set: async (key, value, ...args) => {
-      try {
-        // Handle both ioredis style: set(key, value, "EX", ttl)
-        let ttl = 300; // default 5 minutes
+      const ttl = parseTtl(args);
+      await memoryRedis.set(key, value, "EX", ttl);
 
-        // Parse ioredis style arguments
-        if (args.length >= 2 && args[0] === "EX") {
-          ttl = args[1];
-        }
-
-        return await client.set(key, value, { ex: ttl });
-      } catch (err) {
-        console.error(`Upstash SET error [${key}]:`, err.message);
-      }
-    },
-    del: async (key) => {
-      try {
-        return await client.del(key);
-      } catch (err) {
-        console.error(`Upstash DEL error [${key}]:`, err.message);
-      }
-    },
-    scan: async (cursor, ...args) => {
-      try {
-        // Extract pattern and count from arguments
-        let pattern = "*";
-        let count = 100;
-
-        for (let i = 0; i < args.length; i++) {
-          if (args[i] === "MATCH" && args[i + 1]) {
-            pattern = args[i + 1];
-            i++;
-          } else if (args[i] === "COUNT" && args[i + 1]) {
-            count = args[i + 1];
-            i++;
-          }
-        }
-
-        // Use Upstash keys command as alternative to scan
-        const keys = await client.keys(pattern);
-        return ["0", keys]; // Return [nextCursor, keys]
-      } catch (err) {
-        console.error(`Upstash SCAN error:`, err.message);
-        return ["0", []];
-      }
-    },
-    flushdb: async () => {
-      try {
-        return await client.flushdb();
-      } catch (err) {
-        console.error(`Upstash FLUSHDB error:`, err.message);
-      }
-    },
-    quit: async () => {
-      console.log("Upstash Redis connection closed");
-      return Promise.resolve();
-    },
-  };
-
-  console.log("Upstash Redis connected successfully");
-} else {
-  // Fallback with mock Redis (for offline development)
-  console.warn("Upstash credentials not found, using mock Redis");
-
-  const mockCache = {};
-
-  redis = {
-    status: "ready",
-    get: async (key) => {
-      const item = mockCache[key];
-      if (!item) return null;
-      if (item.expires && item.expires < Date.now()) {
-        delete mockCache[key];
-        return null;
-      }
-      return item.value;
-    },
-    set: async (key, value, ...args) => {
-      let ttl = 300;
-      if (args.length >= 2 && args[0] === "EX") {
-        ttl = args[1];
-      }
-      mockCache[key] = {
-        value,
-        expires: Date.now() + ttl * 1000,
-      };
-      return "OK";
-    },
-    del: async (key) => {
-      delete mockCache[key];
-      return 1;
-    },
-    scan: async (cursor, ...args) => {
-      let pattern = "*";
-      for (let i = 0; i < args.length; i++) {
-        if (args[i] === "MATCH" && args[i + 1]) {
-          pattern = args[i + 1];
-          break;
-        }
-      }
-
-      const regex = new RegExp(
-        "^" + pattern.replace(/\*/g, ".*").replace(/\?/g, ".") + "$",
+      const upstashResult = await runUpstash("SET", () =>
+        client.set(key, value, { ex: ttl }),
       );
-      const keys = Object.keys(mockCache).filter((key) => regex.test(key));
-      return ["0", keys];
+
+      return upstashResult.ok ? upstashResult.value : "OK";
+    },
+    del: async (...keys) => {
+      if (!keys.length) return 0;
+
+      const memoryDeleted = await memoryRedis.del(...keys);
+      const upstashResult = await runUpstash("DEL", () => {
+        if (keys.length === 1) return client.del(keys[0]);
+        return client.del(keys);
+      });
+
+      if (upstashResult.ok) {
+        return upstashResult.value;
+      }
+
+      return memoryDeleted;
+    },
+    scan: async (cursor, ...args) => {
+      const pattern = parseScanPattern(args);
+      const upstashResult = await runUpstash("SCAN", () => client.keys(pattern));
+
+      if (upstashResult.ok) {
+        return ["0", upstashResult.value || []];
+      }
+
+      return memoryRedis.scan(cursor, ...args);
     },
     flushdb: async () => {
-      for (const key in mockCache) {
-        delete mockCache[key];
-      }
-      return "OK";
+      await memoryRedis.flushdb();
+      const upstashResult = await runUpstash("FLUSHDB", () => client.flushdb());
+      return upstashResult.ok ? upstashResult.value : "OK";
     },
     quit: async () => {
       return Promise.resolve();
     },
   };
 
-  console.log("Mock Redis initialized (for development without Upstash)");
+  console.log("Upstash Redis enabled with fail-fast fallback to memory store");
+} else {
+  console.warn("Upstash credentials not found. Using in-memory Redis fallback.");
+  redis = memoryRedis;
 }
 
 export default redis;
