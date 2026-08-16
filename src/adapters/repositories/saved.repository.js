@@ -48,16 +48,10 @@ const isSavedByUser = async (userId, postId) => {
   return result.length > 0;
 };
 
-const findPostById = async (postId) => {
-  const result = await db`SELECT * FROM posts WHERE id = ${postId}`;
-  return result.length > 0 ? result[0] : null;
-};
-
 export {
   findSavedPost,
   createSavedPost,
   deleteSavedPost,
   findAllSavedPostsByUserId,
   isSavedByUser,
-  findPostById,
 };

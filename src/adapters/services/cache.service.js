@@ -73,11 +73,38 @@ const delByPattern = async (pattern) => {
       );
       cursor = nextCursor;
       if (keys.length > 0) {
-        await redis.del(...keys);
+        if (typeof redis.unlink === "function") {
+          await redis.unlink(...keys);
+        } else {
+          await redis.del(...keys);
+        }
       }
     } while (cursor !== "0");
   } catch (err) {
     console.error(`Cache DEL pattern error [${pattern}]:`, err.message);
+  }
+};
+
+/**
+ * Atomically increment numeric cache value.
+ * @param {string} key - Cache key
+ * @param {number|null} ttl - Optional TTL in seconds to refresh key expiry
+ * @returns {number|null} Incremented value or null when unavailable/error
+ */
+const incr = async (key, ttl = null) => {
+  if (!isAvailable()) return null;
+
+  try {
+    const value = await redis.incr(key);
+
+    if (Number.isFinite(ttl) && ttl > 0) {
+      await redis.set(key, String(value), "EX", ttl);
+    }
+
+    return Number(value);
+  } catch (err) {
+    console.error(`Cache INCR error [${key}]:`, err.message);
+    return null;
   }
 };
 
@@ -94,4 +121,4 @@ const flush = async () => {
   }
 };
 
-export { get, set, del, delByPattern, flush, isAvailable };
+export { get, set, del, delByPattern, incr, flush, isAvailable };

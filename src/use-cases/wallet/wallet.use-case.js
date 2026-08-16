@@ -1,6 +1,7 @@
 export const makeWalletUseCases = ({
   idService,
   walletRepository,
+  userRepository,
   midtransService,
 }) => {
   /**
@@ -29,9 +30,14 @@ export const makeWalletUseCases = ({
   /**
    * Create a top-up transaction via Midtrans Snap
    */
-  const createTopUp = async (userId, userName, userEmail, amount) => {
+  const createTopUp = async (userId, amount) => {
     if (amount < 10000) {
       throw new Error("Minimum top up Rp 10.000");
+    }
+
+    const user = await userRepository.findUserById(userId);
+    if (!user) {
+      throw new Error("User tidak ditemukan");
     }
 
     // Ensure wallet exists
@@ -55,8 +61,8 @@ export const makeWalletUseCases = ({
         gross_amount: amount,
       },
       customer_details: {
-        first_name: userName,
-        email: userEmail,
+        first_name: user.name,
+        email: user.email,
       },
       item_details: [
         {

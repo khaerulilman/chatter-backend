@@ -121,11 +121,6 @@ export const findMessagesByConversationId = async (
   `;
 };
 
-export const findUserById = async (userId) => {
-  const result = await db`SELECT 1 FROM users WHERE id = ${userId} LIMIT 1`;
-  return result.length > 0;
-};
-
 /**
  * Get the OTHER member's user_id in a private conversation.
  */

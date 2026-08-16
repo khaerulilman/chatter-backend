@@ -1,5 +1,4 @@
 import { walletUseCases } from "../../container.js";
-import db from "../../frameworks/database/db.js";
 
 // GET /api/wallet/balance
 export const getBalance = async (req, res) => {
@@ -25,18 +24,8 @@ export const createTopUp = async (req, res) => {
       return res.status(400).json({ message: "Minimum top up Rp 10.000" });
     }
 
-    // Get user info for Midtrans customer details
-    const users = await db`SELECT name, email FROM users WHERE id = ${userId}`;
-    if (users.length === 0) {
-      return res.status(404).json({ message: "User tidak ditemukan" });
-    }
-
-    const result = await walletUseCases.createTopUp(
-      userId,
-      users[0].name,
-      users[0].email,
-      Number(amount),
-    );
+    // Get user info for Midtrans customer details is handled inside the use case
+    const result = await walletUseCases.createTopUp(userId, Number(amount));
 
     res.status(201).json({ data: result });
   } catch (error) {

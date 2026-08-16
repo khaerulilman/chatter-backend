@@ -207,15 +207,19 @@ export const login = async (req, res) => {
     return res.status(400).json({ message: "Email dan password diperlukan." });
   }
 
-  // Verify Turnstile before hitting the database
-  const ip = req.headers["cf-connecting-ip"] || req.ip;
-  const turnstileOk = await verifyTurnstile(turnstileToken, ip).catch(
-    () => false,
-  );
-  if (!turnstileOk) {
-    return res
-      .status(400)
-      .json({ message: "Security check failed. Please try again." });
+  // Verify Turnstile before hitting the database (only if CAPTCHA is enabled)
+  if (process.env.CAPTCHA_ENABLED === "true") {
+    const ip = req.headers["cf-connecting-ip"] || req.ip;
+    const turnstileOk = await verifyTurnstile(turnstileToken, ip).catch(
+      () => false,
+    );
+    if (!turnstileOk) {
+      return res
+        .status(400)
+        .json({ message: "Security check failed. Please try again." });
+    }
+  } else {
+    console.log("[DEV] CAPTCHA verification skipped (CAPTCHA_ENABLED=false)");
   }
 
   try {

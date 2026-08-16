@@ -4,6 +4,7 @@ import { isValidCommentId } from "../../entities/Comment.js";
 export const makeCommentUseCases = ({
   idService,
   commentRepository,
+  postRepository,
   notifyService,
 }) => {
   const getCommentsService = async (postId) => {
@@ -11,7 +12,7 @@ export const makeCommentUseCases = ({
       throw new Error("Invalid postId format.");
     }
 
-    const post = await commentRepository.findPostById(postId);
+    const post = await postRepository.findPostById(postId);
     if (!post) {
       throw new Error("Post not found.");
     }
@@ -25,7 +26,7 @@ export const makeCommentUseCases = ({
       throw new Error("Invalid postId format.");
     }
 
-    const post = await commentRepository.findPostById(postId);
+    const post = await postRepository.findPostById(postId);
     if (!post) {
       throw new Error("Post not found.");
     }
@@ -91,7 +92,7 @@ export const makeCommentUseCases = ({
       throw new Error("Invalid postId format.");
     }
 
-    const post = await commentRepository.findPostById(postId);
+    const post = await postRepository.findPostById(postId);
     if (!post) {
       throw new Error("Post not found.");
     }

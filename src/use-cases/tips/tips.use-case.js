@@ -1,9 +1,8 @@
-import db from "../../frameworks/database/db.js";
-
 export const makeTipsUseCases = ({
   idService,
   tipsRepository,
   walletRepository,
+  postRepository,
   notifyService,
 }) => {
   /**
@@ -19,12 +18,12 @@ export const makeTipsUseCases = ({
     }
 
     // Get post to find receiver
-    const posts = await db`SELECT user_id FROM posts WHERE id = ${postId}`;
-    if (posts.length === 0) {
+    const post = await postRepository.findPostById(postId);
+    if (!post) {
       throw Object.assign(new Error("Post tidak ditemukan"), { status: 404 });
     }
 
-    const receiverId = posts[0].user_id;
+    const receiverId = post.user_id;
 
     // Cannot tip your own post
     if (senderId === receiverId) {

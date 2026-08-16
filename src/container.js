@@ -52,24 +52,29 @@ export const chatUseCases = makeChatUseCases({
   idService,
   imageService,
   chatRepository,
+  userRepository,
   notifyService: notificationUseCases,
 });
 
 export const commentUseCases = makeCommentUseCases({
   idService,
   commentRepository,
+  postRepository,
   notifyService: notificationUseCases,
 });
 
 export const followUseCases = makeFollowUseCases({
   idService,
   followRepository,
+  userRepository,
   notifyService: notificationUseCases,
 });
 
 export const likeUseCases = makeLikeUseCases({
   idService,
   likeRepository,
+  userRepository,
+  postRepository,
   notifyService: notificationUseCases,
 });
 
@@ -78,11 +83,14 @@ export const postUseCases = makePostUseCases({
   imageService,
   postRepository,
   walletRepository,
+  followRepository,
+  userRepository,
 });
 
 export const savedUseCases = makeSavedUseCases({
   savedRepository,
   postRepository,
+  followRepository,
 });
 
 export const userUseCases = makeUserUseCases({
@@ -94,6 +102,7 @@ export const userUseCases = makeUserUseCases({
 export const walletUseCases = makeWalletUseCases({
   idService,
   walletRepository,
+  userRepository,
   midtransService,
 });
 
@@ -101,5 +110,6 @@ export const tipsUseCases = makeTipsUseCases({
   idService,
   tipsRepository,
   walletRepository,
+  postRepository,
   notifyService: notificationUseCases,
 });
