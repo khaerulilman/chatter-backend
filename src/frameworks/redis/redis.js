@@ -54,6 +54,14 @@ const createMemoryRedis = () => {
     return item;
   };
 
+  const deleteKeys = (...keys) => {
+    let deleted = 0;
+    for (const key of keys) {
+      if (memory.delete(key)) deleted += 1;
+    }
+    return deleted;
+  };
+
   return {
     status: "ready",
     provider: "memory",
@@ -70,11 +78,22 @@ const createMemoryRedis = () => {
       return "OK";
     },
     del: async (...keys) => {
-      let deleted = 0;
-      for (const key of keys) {
-        if (memory.delete(key)) deleted += 1;
-      }
-      return deleted;
+      return deleteKeys(...keys);
+    },
+    unlink: async (...keys) => {
+      return deleteKeys(...keys);
+    },
+    incr: async (key) => {
+      const currentEntry = getEntry(key);
+      const currentValue = Number(currentEntry?.value ?? "0");
+      const nextValue = Number.isFinite(currentValue) ? currentValue + 1 : 1;
+
+      memory.set(key, {
+        value: String(nextValue),
+        expiresAt: null,
+      });
+
+      return nextValue;
     },
     scan: async (cursor, ...args) => {
       const pattern = parseScanPattern(args);
@@ -210,6 +229,41 @@ if (useUpstash) {
       }
 
       return memoryDeleted;
+    },
+    unlink: async (...keys) => {
+      if (!keys.length) return 0;
+
+      const memoryDeleted = await memoryRedis.unlink(...keys);
+
+      const upstashResult = await runUpstash("UNLINK", () => {
+        if (typeof client.unlink === "function") {
+          if (keys.length === 1) return client.unlink(keys[0]);
+          return client.unlink(keys);
+        }
+
+        if (keys.length === 1) return client.del(keys[0]);
+        return client.del(keys);
+      });
+
+      if (upstashResult.ok) {
+        return upstashResult.value;
+      }
+
+      return memoryDeleted;
+    },
+    incr: async (key) => {
+      const memoryValue = await memoryRedis.incr(key);
+      const upstashResult = await runUpstash("INCR", () => client.incr(key));
+
+      if (upstashResult.ok) {
+        const normalized = Number(upstashResult.value);
+        if (Number.isFinite(normalized)) {
+          await memoryRedis.set(key, String(normalized), "EX", 86400);
+          return normalized;
+        }
+      }
+
+      return memoryValue;
     },
     scan: async (cursor, ...args) => {
       const pattern = parseScanPattern(args);

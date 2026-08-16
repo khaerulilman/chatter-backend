@@ -1,10 +1,5 @@
 import db from "../../frameworks/database/db.js";
 
-const findUserById = async (userId) => {
-  const result = await db`SELECT * FROM users WHERE id = ${userId}`;
-  return result.length > 0 ? result[0] : null;
-};
-
 const findFollow = async (followerId, followingId) => {
   const result = await db`
     SELECT * FROM follows
@@ -87,7 +82,6 @@ const getFollowingIds = async (userId) => {
 };
 
 export {
-  findUserById,
   findFollow,
   createFollow,
   deleteFollow,

@@ -3,11 +3,6 @@ import * as cacheService from "../services/cache.service.js";
 
 const CACHE_TTL = 300;
 
-const findPostById = async (postId) => {
-  const result = await db`SELECT * FROM posts WHERE id = ${postId}`;
-  return result.length > 0 ? result[0] : null;
-};
-
 const findCommentsByPostId = async (postId) => {
   const cacheKey = `comments:post:${postId}`;
   const cached = await cacheService.get(cacheKey);
@@ -95,7 +90,6 @@ const countCommentsByPostId = async (postId) => {
 };
 
 export {
-  findPostById,
   findCommentsByPostId,
   createComment,
   findCommentById,

@@ -79,11 +79,6 @@ const createPost = async (postData) => {
   return result;
 };
 
-const findUserById = async (userId) => {
-  const result = await db`SELECT 1 FROM users WHERE id = ${userId} LIMIT 1`;
-  return result.length > 0;
-};
-
 const findPostsByUserId = async (userId, limit, offset) => {
   const cacheKey = `posts:user:${userId}:${limit}:${offset}`;
   const cached = await cacheService.get(cacheKey);
@@ -166,15 +161,6 @@ const getMediaFileidsByPostId = async (postId) => {
   return [...pub, ...hidden];
 };
 
-const checkIsFollowing = async (followerId, followingId) => {
-  const result = await db`
-    SELECT 1 FROM follows
-    WHERE follower_id = ${followerId} AND following_id = ${followingId}
-    LIMIT 1
-  `;
-  return result.length > 0;
-};
-
 const checkHasPurchased = async (userId, postId) => {
   const result = await db`
     SELECT 1 FROM post_purchases
@@ -227,12 +213,10 @@ export {
   findAllPosts,
   findPostById,
   createPost,
-  findUserById,
   findPostsByUserId,
   getPostByIdWithUser,
   deletePostById,
   getMediaFileidsByPostId,
-  checkIsFollowing,
   checkHasPurchased,
   createPurchase,
   getPurchasesReceived,

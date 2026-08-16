@@ -1,64 +1,14 @@
 import { isValidPostId } from "../../entities/Post.js";
+import { processRestrictedPosts } from "./processRestrictedPosts.js";
 
 export const makePostUseCases = ({
   idService,
   imageService,
   postRepository,
   walletRepository,
+  followRepository,
+  userRepository,
 }) => {
-  // Strip hidden content from follower-only / paid posts when viewer can't see it
-  const processRestrictedPosts = async (posts, requesterId) => {
-    return Promise.all(
-      posts.map(async (post) => {
-        const isRestricted = post.is_follower_only || post.is_paid;
-        if (!isRestricted) return post;
-
-        // Owner always sees everything
-        if (requesterId && requesterId === post.user_id) {
-          return { ...post, is_hidden_unlocked: true };
-        }
-
-        let canSeeHidden = false;
-        if (requesterId) {
-          if (post.is_follower_only) {
-            canSeeHidden = await postRepository.checkIsFollowing(
-              requesterId,
-              post.user_id,
-            );
-          }
-          if (post.is_paid && !canSeeHidden) {
-            canSeeHidden = await postRepository.checkHasPurchased(
-              requesterId,
-              post.id,
-            );
-          }
-        }
-
-        if (canSeeHidden) {
-          return { ...post, is_hidden_unlocked: true };
-        }
-
-        // Count hidden words and images for the blurred overlay info
-        const hiddenWordCount = post.hidden_content
-          ? post.hidden_content.split(/\s+/).filter(Boolean).length
-          : 0;
-        const hiddenImageCount =
-          post.hidden_media_urls && Array.isArray(post.hidden_media_urls)
-            ? post.hidden_media_urls.length
-            : 0;
-
-        return {
-          ...post,
-          hidden_content: null,
-          hidden_media_urls: null,
-          is_hidden_unlocked: false,
-          hidden_word_count: hiddenWordCount,
-          hidden_image_count: hiddenImageCount,
-        };
-      }),
-    );
-  };
-
   const getPostsService = async (page, limit, requesterId) => {
     if (
       typeof page !== "number" ||
@@ -71,7 +21,10 @@ export const makePostUseCases = ({
 
     const offset = (page - 1) * limit;
     const posts = await postRepository.findAllPosts(limit, offset);
-    return processRestrictedPosts(posts, requesterId);
+    return processRestrictedPosts(posts, requesterId, {
+      followRepository,
+      postRepository,
+    });
   };
 
   const getPostsByUserIdService = async (userId, page, limit, requesterId) => {
@@ -86,7 +39,10 @@ export const makePostUseCases = ({
 
     const offset = (page - 1) * limit;
     const posts = await postRepository.findPostsByUserId(userId, limit, offset);
-    return processRestrictedPosts(posts, requesterId);
+    return processRestrictedPosts(posts, requesterId, {
+      followRepository,
+      postRepository,
+    });
   };
 
   const createPostService = async (
@@ -102,7 +58,7 @@ export const makePostUseCases = ({
       commentsDisabled,
     } = {},
   ) => {
-    const userExists = await postRepository.findUserById(userId);
+    const userExists = await userRepository.findUserById(userId);
     if (!userExists) {
       throw new Error("User not found");
     }
@@ -185,7 +141,10 @@ export const makePostUseCases = ({
       throw new Error("Post not found.");
     }
 
-    const [processed] = await processRestrictedPosts([post], requesterId);
+    const [processed] = await processRestrictedPosts([post], requesterId, {
+      followRepository,
+      postRepository,
+    });
     return processed;
   };
 

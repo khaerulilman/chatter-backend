@@ -2,6 +2,7 @@ export const makeChatUseCases = ({
   idService,
   imageService,
   chatRepository,
+  userRepository,
   notifyService,
 }) => {
   // ─── Conversations ──────────────────────────────────────────────
@@ -11,7 +12,7 @@ export const makeChatUseCases = ({
       throw new Error("Cannot start a conversation with yourself.");
     }
 
-    const targetExists = await chatRepository.findUserById(targetUserId);
+    const targetExists = await userRepository.findUserById(targetUserId);
     if (!targetExists) {
       throw new Error("Target user not found.");
     }

@@ -1,6 +1,7 @@
 import {
   DEFAULT_PROFILE_PICTURE,
   DEFAULT_HEADER_PICTURE,
+  toPublicUser,
 } from "../../entities/User.js";
 
 export const makeUserUseCases = ({
@@ -20,14 +21,7 @@ export const makeUserUseCases = ({
   const getUserByUsernameService = async (username) => {
     const user = await userRepository.findUserByUsername(username);
     if (!user) throw new Error("User not found");
-    const { password, token, ...publicUser } = user;
-
-    publicUser.profile_picture =
-      publicUser.profile_picture || DEFAULT_PROFILE_PICTURE;
-    publicUser.header_picture =
-      publicUser.header_picture || DEFAULT_HEADER_PICTURE;
-
-    return publicUser;
+    return toPublicUser(user);
   };
 
   const updateProfileService = async (userId, updates, files) => {

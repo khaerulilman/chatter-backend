@@ -1,15 +1,17 @@
 export const makeLikeUseCases = ({
   idService,
   likeRepository,
+  userRepository,
+  postRepository,
   notifyService,
 }) => {
   const toggleLikeService = async (userId, postId) => {
-    const user = await likeRepository.findUserById(userId);
+    const user = await userRepository.findUserById(userId);
     if (!user) {
       throw new Error("User not found.");
     }
 
-    const post = await likeRepository.findPostById(postId);
+    const post = await postRepository.findPostById(postId);
     if (!post) {
       throw new Error("Post not found.");
     }
@@ -57,12 +59,12 @@ export const makeLikeUseCases = ({
   };
 
   const getLikeStatusService = async (userId, postId) => {
-    const user = await likeRepository.findUserById(userId);
+    const user = await userRepository.findUserById(userId);
     if (!user) {
       throw new Error("User not found.");
     }
 
-    const post = await likeRepository.findPostById(postId);
+    const post = await postRepository.findPostById(postId);
     if (!post) {
       throw new Error("Post not found.");
     }
@@ -74,7 +76,7 @@ export const makeLikeUseCases = ({
   };
 
   const getLikeCountService = async (postId) => {
-    const post = await likeRepository.findPostById(postId);
+    const post = await postRepository.findPostById(postId);
     if (!post) {
       throw new Error("Post not found.");
     }
