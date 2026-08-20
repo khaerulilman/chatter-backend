@@ -1,22 +1,24 @@
 import imagekit from "../../frameworks/imagekit/imagekit.js";
 
 // Upload file ke ImageKit.
-export const upload = (opts) =>
-  new Promise((resolve, reject) => {
-    imagekit.upload(opts, (error, result) => {
-      if (error) return reject(new Error("ImageKit upload failed."));
-      resolve(result);
-    });
-  });
+export const upload = async (opts) => {
+  try {
+    return await imagekit.upload(opts);
+  } catch (error) {
+    throw new Error("ImageKit upload failed.");
+  }
+};
 
 // Hapus satu file dari ImageKit berdasarkan fileId.
-export const deleteFile = (fileId) => imagekit.deleteFile(fileId);
+export const deleteFile = async (fileId) => {
+  return await imagekit.deleteFile(fileId);
+};
 
 // Hapus banyak file dari ImageKit sekaligus (max 100).
-export const deleteFiles = (fileIds) =>
-  new Promise((resolve, reject) => {
-    imagekit.bulkDeleteFiles(fileIds, (error, result) => {
-      if (error) return reject(new Error("ImageKit bulk delete failed."));
-      resolve(result);
-    });
-  });
+export const deleteFiles = async (fileIds) => {
+  try {
+    return await imagekit.bulkDeleteFiles(fileIds);
+  } catch (error) {
+    throw new Error("ImageKit bulk delete failed.");
+  }
+};

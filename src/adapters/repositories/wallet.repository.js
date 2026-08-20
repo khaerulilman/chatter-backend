@@ -2,7 +2,7 @@ import db from "../../frameworks/database/db.js";
 
 // Get wallet by user ID (create if not exists)
 export const getWalletByUserId = async (userId) => {
-  const wallet = await db`
+  const wallet = await db.$queryRaw`
     SELECT id, user_id, balance, created_at, updated_at
     FROM wallets
     WHERE user_id = ${userId}
@@ -12,7 +12,7 @@ export const getWalletByUserId = async (userId) => {
 
 // Create wallet for a user
 export const createWallet = async (id, userId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO wallets (id, user_id, balance)
     VALUES (${id}, ${userId}, 0)
     ON CONFLICT (user_id) DO NOTHING
@@ -23,7 +23,7 @@ export const createWallet = async (id, userId) => {
 
 // Add balance to wallet
 export const addBalance = async (userId, amount) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     UPDATE wallets
     SET balance = balance + ${amount},
         updated_at = NOW()
@@ -46,7 +46,7 @@ export const createTransaction = async (txData) => {
     snap_redirect_url,
   } = txData;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO wallet_transactions (id, user_id, type, amount, status, midtrans_order_id, snap_token, snap_redirect_url)
     VALUES (${id}, ${user_id}, ${type}, ${amount}, ${status}, ${midtrans_order_id}, ${snap_token || null}, ${snap_redirect_url || null})
     RETURNING *
@@ -56,7 +56,7 @@ export const createTransaction = async (txData) => {
 
 // Find transaction by Midtrans order ID
 export const findTransactionByOrderId = async (orderId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT * FROM wallet_transactions
     WHERE midtrans_order_id = ${orderId}
   `;
@@ -71,7 +71,7 @@ export const updateTransactionStatus = async (
   paymentType,
   midtransTransactionId,
 ) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     UPDATE wallet_transactions
     SET status = ${status},
         payment_type = ${paymentType || null},
@@ -86,11 +86,12 @@ export const updateTransactionStatus = async (
 
 // Expire pending transactions older than given minutes
 export const expirePendingTransactions = async (minutes = 60) => {
-  const result = await db`
+  const intervalStr = `${minutes} minutes`;
+  const result = await db.$queryRaw`
     UPDATE wallet_transactions
     SET status = 'expired', updated_at = NOW()
     WHERE status = 'pending'
-      AND created_at < NOW() - ${minutes + " minutes"}::interval
+      AND created_at < NOW() - (${intervalStr})::interval
     RETURNING id
   `;
   return result.length;
@@ -102,7 +103,7 @@ export const getTransactionsByUserId = async (
   limit = 20,
   offset = 0,
 ) => {
-  const transactions = await db`
+  const transactions = await db.$queryRaw`
     SELECT id, type, amount, status, payment_type, midtrans_order_id, snap_token, created_at
     FROM wallet_transactions
     WHERE user_id = ${userId}

@@ -8,14 +8,14 @@ const findAllUsers = async () => {
   const cached = await cacheService.get(cacheKey);
   if (cached) return cached;
 
-  const users = await db`SELECT * FROM users`;
+  const users = await db.$queryRaw`SELECT * FROM users`;
 
   await cacheService.set(cacheKey, users, CACHE_TTL);
   return users;
 };
 
 const findUserById = async (userId) => {
-  const result = await db`SELECT * FROM users WHERE id = ${userId}`;
+  const result = await db.$queryRaw`SELECT * FROM users WHERE id = ${userId}`;
   return result.length > 0 ? result[0] : null;
 };
 
@@ -24,7 +24,7 @@ const findUserByUsername = async (username) => {
   const cached = await cacheService.get(cacheKey);
   if (cached) return cached;
 
-  const result = await db`SELECT * FROM users WHERE username = ${username}`;
+  const result = await db.$queryRaw`SELECT * FROM users WHERE username = ${username}`;
   const user = result.length > 0 ? result[0] : null;
 
   if (user) {
@@ -61,7 +61,7 @@ const updateUser = async (userId, updates) => {
   query += setParts.join(", ") + ` WHERE id = $${params.length + 1}`;
   params.push(userId);
 
-  await db(query, params);
+  await db.$queryRawUnsafe(query, ...params);
 
   await cacheService.del("users:all");
   await cacheService.delByPattern("users:username:*");

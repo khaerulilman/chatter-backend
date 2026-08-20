@@ -13,7 +13,7 @@ export const createNotification = async ({
   // Skip if actor and recipient are the same person
   if (recipient_id === actor_id) return null;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO notifications (id, recipient_id, actor_id, type, entity_id)
     VALUES (${id}, ${recipient_id}, ${actor_id}, ${type}, ${entity_id ?? null})
     RETURNING *
@@ -25,7 +25,7 @@ export const createNotification = async ({
  * Get all notifications for a user (with actor info joined).
  */
 export const findNotificationsByRecipient = async (recipientId) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT
       n.id,
       n.type,
@@ -48,19 +48,19 @@ export const findNotificationsByRecipient = async (recipientId) => {
  * Count unread notifications for a user.
  */
 export const countUnreadNotifications = async (recipientId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT COUNT(*) AS count
     FROM notifications
     WHERE recipient_id = ${recipientId} AND is_read = FALSE
   `;
-  return parseInt(result[0].count);
+  return parseInt(String(result[0].count));
 };
 
 /**
  * Mark a single notification as read.
  */
 export const markNotificationRead = async (notificationId, recipientId) => {
-  await db`
+  await db.$queryRaw`
     UPDATE notifications
     SET is_read = TRUE
     WHERE id = ${notificationId} AND recipient_id = ${recipientId}
@@ -71,7 +71,7 @@ export const markNotificationRead = async (notificationId, recipientId) => {
  * Mark ALL notifications as read for a user.
  */
 export const markAllNotificationsRead = async (recipientId) => {
-  await db`
+  await db.$queryRaw`
     UPDATE notifications
     SET is_read = TRUE
     WHERE recipient_id = ${recipientId}
@@ -82,7 +82,7 @@ export const markAllNotificationsRead = async (recipientId) => {
  * Delete a notification.
  */
 export const deleteNotification = async (notificationId, recipientId) => {
-  await db`
+  await db.$queryRaw`
     DELETE FROM notifications
     WHERE id = ${notificationId} AND recipient_id = ${recipientId}
   `;

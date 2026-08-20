@@ -8,7 +8,7 @@ const findAllPosts = async (limit, offset) => {
   const cached = await cacheService.get(cacheKey);
   if (cached) return cached;
 
-  const posts = await db`
+  const posts = await db.$queryRaw`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
@@ -30,7 +30,7 @@ const findAllPosts = async (limit, offset) => {
 };
 
 const findPostById = async (postId) => {
-  const result = await db`SELECT * FROM posts WHERE id = ${postId}`;
+  const result = await db.$queryRaw`SELECT * FROM posts WHERE id = ${postId}`;
   return result.length > 0 ? result[0] : null;
 };
 
@@ -51,7 +51,7 @@ const createPost = async (postData) => {
     comments_disabled,
   } = postData;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO posts (
       id, user_id, content, media_url, media_urls, media_fileids,
       is_follower_only, hidden_content, hidden_media_urls, hidden_media_fileids,
@@ -60,12 +60,12 @@ const createPost = async (postData) => {
     VALUES (
       ${id}, ${user_id}, ${content},
       ${media_url || null},
-      ${media_urls ? JSON.stringify(media_urls) : null},
-      ${media_fileids ? JSON.stringify(media_fileids) : null},
+      ${media_urls ? JSON.stringify(media_urls) : null}::jsonb,
+      ${media_fileids ? JSON.stringify(media_fileids) : null}::jsonb,
       ${is_follower_only || false},
       ${hidden_content || null},
-      ${hidden_media_urls ? JSON.stringify(hidden_media_urls) : null},
-      ${hidden_media_fileids ? JSON.stringify(hidden_media_fileids) : null},
+      ${hidden_media_urls ? JSON.stringify(hidden_media_urls) : null}::jsonb,
+      ${hidden_media_fileids ? JSON.stringify(hidden_media_fileids) : null}::jsonb,
       ${is_paid || false},
       ${price || null},
       ${comments_disabled || false}
@@ -84,7 +84,7 @@ const findPostsByUserId = async (userId, limit, offset) => {
   const cached = await cacheService.get(cacheKey);
   if (cached) return cached;
 
-  const posts = await db`
+  const posts = await db.$queryRaw`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
@@ -111,7 +111,7 @@ const getPostByIdWithUser = async (postId) => {
   const cached = await cacheService.get(cacheKey);
   if (cached) return cached;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
@@ -135,7 +135,7 @@ const getPostByIdWithUser = async (postId) => {
 };
 
 const deletePostById = async (postId) => {
-  const result = await db`DELETE FROM posts WHERE id = ${postId} RETURNING *`;
+  const result = await db.$queryRaw`DELETE FROM posts WHERE id = ${postId} RETURNING *`;
 
   if (result.length > 0) {
     const userId = result[0].user_id;
@@ -151,7 +151,7 @@ const deletePostById = async (postId) => {
 
 const getMediaFileidsByPostId = async (postId) => {
   const result =
-    await db`SELECT media_fileids, hidden_media_fileids FROM posts WHERE id = ${postId}`;
+    await db.$queryRaw`SELECT media_fileids, hidden_media_fileids FROM posts WHERE id = ${postId}`;
   if (result.length === 0) return [];
   const { media_fileids, hidden_media_fileids } = result[0];
   const pub = Array.isArray(media_fileids) ? media_fileids : [];
@@ -162,7 +162,7 @@ const getMediaFileidsByPostId = async (postId) => {
 };
 
 const checkHasPurchased = async (userId, postId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT 1 FROM post_purchases
     WHERE user_id = ${userId} AND post_id = ${postId}
     LIMIT 1
@@ -171,7 +171,7 @@ const checkHasPurchased = async (userId, postId) => {
 };
 
 const createPurchase = async ({ id, userId, postId, amount }) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO post_purchases (id, user_id, post_id, amount)
     VALUES (${id}, ${userId}, ${postId}, ${amount})
     RETURNING *
@@ -181,7 +181,7 @@ const createPurchase = async ({ id, userId, postId, amount }) => {
 
 // Get purchases where user is the post owner (income)
 const getPurchasesReceived = async (userId, limit = 20, offset = 0) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT pp.id, pp.amount, pp.created_at, pp.post_id,
            u.id AS buyer_id, u.name AS buyer_name, u.username AS buyer_username, u.profile_picture AS buyer_profile_picture,
            p.content AS post_content
@@ -196,7 +196,7 @@ const getPurchasesReceived = async (userId, limit = 20, offset = 0) => {
 
 // Get purchases made by user (spending)
 const getPurchasesSent = async (userId, limit = 20, offset = 0) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT pp.id, pp.amount, pp.created_at, pp.post_id,
            u.id AS seller_id, u.name AS seller_name, u.username AS seller_username, u.profile_picture AS seller_profile_picture,
            p.content AS post_content

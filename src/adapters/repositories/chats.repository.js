@@ -3,19 +3,19 @@ import db from "../../frameworks/database/db.js";
 // ─── Conversations ────────────────────────────────────────────────
 
 export const createConversation = async (conversationId, userIdA, userIdB) => {
-  await db`
+  await db.$queryRaw`
     INSERT INTO conversations (id)
     VALUES (${conversationId})
   `;
 
-  await db`
+  await db.$queryRaw`
     INSERT INTO conversation_members (conversation_id, user_id)
     VALUES
       (${conversationId}, ${userIdA}),
       (${conversationId}, ${userIdB})
   `;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT * FROM conversations WHERE id = ${conversationId}
   `;
   return result[0];
@@ -23,7 +23,7 @@ export const createConversation = async (conversationId, userIdA, userIdB) => {
 
 // Find an existing private conversation between exactly two users
 export const findConversationBetween = async (userIdA, userIdB) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT c.id, c.created_at
     FROM conversations c
     JOIN conversation_members cm1 ON cm1.conversation_id = c.id AND cm1.user_id = ${userIdA}
@@ -34,7 +34,7 @@ export const findConversationBetween = async (userIdA, userIdB) => {
 
 // Get all conversations for a user (with the other member's info)
 export const findConversationsByUserId = async (userId) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT
       c.id AS conversation_id,
       c.created_at,
@@ -60,7 +60,7 @@ export const findConversationsByUserId = async (userId) => {
 };
 
 export const findConversationById = async (conversationId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT * FROM conversations WHERE id = ${conversationId}
   `;
   return result.length > 0 ? result[0] : null;
@@ -68,7 +68,7 @@ export const findConversationById = async (conversationId) => {
 
 // Check if a user is a member of a conversation
 export const isConversationMember = async (conversationId, userId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT 1 FROM conversation_members
     WHERE conversation_id = ${conversationId} AND user_id = ${userId}
     LIMIT 1
@@ -82,7 +82,7 @@ export const createMessage = async (messageData) => {
   const { id, conversation_id, sender_id, content, media_url } = messageData;
 
   if (media_url) {
-    const result = await db`
+    const result = await db.$queryRaw`
       INSERT INTO messages (id, conversation_id, sender_id, content, media_url)
       VALUES (${id}, ${conversation_id}, ${sender_id}, ${content ?? null}, ${media_url})
       RETURNING *
@@ -90,7 +90,7 @@ export const createMessage = async (messageData) => {
     return result[0];
   }
 
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO messages (id, conversation_id, sender_id, content)
     VALUES (${id}, ${conversation_id}, ${sender_id}, ${content})
     RETURNING *
@@ -103,7 +103,7 @@ export const findMessagesByConversationId = async (
   limit,
   offset,
 ) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT
       m.id,
       m.conversation_id,
@@ -125,7 +125,7 @@ export const findMessagesByConversationId = async (
  * Get the OTHER member's user_id in a private conversation.
  */
 export const findOtherMember = async (conversationId, myUserId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT user_id FROM conversation_members
     WHERE conversation_id = ${conversationId} AND user_id != ${myUserId}
     LIMIT 1

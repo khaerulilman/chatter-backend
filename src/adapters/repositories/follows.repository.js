@@ -1,7 +1,7 @@
 import db from "../../frameworks/database/db.js";
 
 const findFollow = async (followerId, followingId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT * FROM follows
     WHERE follower_id = ${followerId} AND following_id = ${followingId}
   `;
@@ -10,7 +10,7 @@ const findFollow = async (followerId, followingId) => {
 
 const createFollow = async (followData) => {
   const { id, follower_id, following_id, created_at } = followData;
-  return await db`
+  return await db.$queryRaw`
     INSERT INTO follows (id, follower_id, following_id, created_at)
     VALUES (${id}, ${follower_id}, ${following_id}, ${created_at})
     RETURNING *
@@ -18,29 +18,29 @@ const createFollow = async (followData) => {
 };
 
 const deleteFollow = async (followerId, followingId) => {
-  await db`
+  await db.$queryRaw`
     DELETE FROM follows
     WHERE follower_id = ${followerId} AND following_id = ${followingId}
   `;
 };
 
 const countFollowers = async (userId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT COUNT(*) as count FROM follows WHERE following_id = ${userId}
   `;
-  return parseInt(result[0].count);
+  return parseInt(String(result[0].count));
 };
 
 const countFollowing = async (userId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT COUNT(*) as count FROM follows WHERE follower_id = ${userId}
   `;
-  return parseInt(result[0].count);
+  return parseInt(String(result[0].count));
 };
 
 // Get list of users who follow userId
 const getFollowers = async (userId) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT u.id, u.name, u.username, u.profile_picture
     FROM follows f
     JOIN users u ON u.id = f.follower_id
@@ -51,7 +51,7 @@ const getFollowers = async (userId) => {
 
 // Get list of users that userId is following
 const getFollowing = async (userId) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT u.id, u.name, u.username, u.profile_picture
     FROM follows f
     JOIN users u ON u.id = f.following_id
@@ -62,7 +62,7 @@ const getFollowing = async (userId) => {
 
 // Get users that the current user is NOT yet following (excluding self)
 const getRecommendedUsers = async (userId) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT u.id, u.name, u.username, u.profile_picture
     FROM users u
     WHERE u.id <> ${userId}
@@ -75,7 +75,7 @@ const getRecommendedUsers = async (userId) => {
 
 // Get IDs of users that userId is following (for bulk follow-status check)
 const getFollowingIds = async (userId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT following_id FROM follows WHERE follower_id = ${userId}
   `;
   return result.map((r) => r.following_id);

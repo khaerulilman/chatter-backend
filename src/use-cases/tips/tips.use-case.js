@@ -11,25 +11,26 @@ export const makeTipsUseCases = ({
   const sendTip = async (senderId, postId, amount, message) => {
     // Validate amount (1.000 - 100.000)
     if (!amount || amount < 1000 || amount > 100000) {
-      throw Object.assign(
-        new Error("Jumlah tip harus antara Rp 1.000 - Rp 100.000"),
-        { status: 400 },
-      );
+      const error = new Error("Jumlah tip harus antara Rp 1.000 - Rp 100.000");
+      error.status = 400;
+      throw error;
     }
 
     // Get post to find receiver
     const post = await postRepository.findPostById(postId);
     if (!post) {
-      throw Object.assign(new Error("Post tidak ditemukan"), { status: 404 });
+      const error = new Error("Post tidak ditemukan");
+      error.status = 404;
+      throw error;
     }
 
     const receiverId = post.user_id;
 
     // Cannot tip your own post
     if (senderId === receiverId) {
-      throw Object.assign(new Error("Tidak bisa memberi tip ke post sendiri"), {
-        status: 400,
-      });
+      const error = new Error("Tidak bisa memberi tip ke post sendiri");
+      error.status = 400;
+      throw error;
     }
 
     // Check sender balance
@@ -43,7 +44,9 @@ export const makeTipsUseCases = ({
     }
 
     if (Number(senderWallet.balance) < amount) {
-      throw Object.assign(new Error("Saldo tidak cukup"), { status: 400 });
+      const error = new Error("Saldo tidak cukup");
+      error.status = 400;
+      throw error;
     }
 
     // Ensure receiver has a wallet
@@ -101,10 +104,12 @@ export const makeTipsUseCases = ({
   const getTipsActivity = async (userId, page = 1, limit = 20) => {
     const offset = (page - 1) * limit;
 
-    const [received, sent] = await Promise.all([
-      tipsRepository.getTipsReceived(userId, limit, offset),
-      tipsRepository.getTipsSent(userId, limit, offset),
-    ]);
+    const received = await tipsRepository.getTipsReceived(
+      userId,
+      limit,
+      offset,
+    );
+    const sent = await tipsRepository.getTipsSent(userId, limit, offset);
 
     return { received, sent };
   };

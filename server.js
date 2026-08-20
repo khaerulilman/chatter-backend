@@ -136,13 +136,18 @@ process.on("uncaughtException", (error) => {
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log("Shutting down gracefully...");
-  server.close();
-  if (redis.status === "ready") {
-    await redis.quit();
-    console.log("Redis disconnected");
+  try {
+    console.log("Shutting down gracefully...");
+    server.close();
+    if (redis.status === "ready") {
+      await redis.quit();
+      console.log("Redis disconnected");
+    }
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+  } finally {
+    process.exit(0);
   }
-  process.exit(0);
 };
 
 process.on("SIGINT", shutdown);

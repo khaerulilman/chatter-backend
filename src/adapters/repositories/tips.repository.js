@@ -9,7 +9,7 @@ export const createTip = async ({
   amount,
   message,
 }) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO tips (id, sender_id, receiver_id, post_id, amount, message)
     VALUES (${id}, ${sender_id}, ${receiver_id}, ${post_id}, ${amount}, ${message || null})
     RETURNING *
@@ -19,7 +19,7 @@ export const createTip = async ({
 
 // Get tips received by a user (with sender info)
 export const getTipsReceived = async (userId, limit = 20, offset = 0) => {
-  const tips = await db`
+  const tips = await db.$queryRaw`
     SELECT t.id, t.amount, t.message, t.created_at, t.post_id,
            u.id as sender_id, u.name as sender_name, u.username as sender_username, u.profile_picture as sender_profile_picture,
            p.content as post_content
@@ -35,7 +35,7 @@ export const getTipsReceived = async (userId, limit = 20, offset = 0) => {
 
 // Get tips sent by a user (with receiver info)
 export const getTipsSent = async (userId, limit = 20, offset = 0) => {
-  const tips = await db`
+  const tips = await db.$queryRaw`
     SELECT t.id, t.amount, t.message, t.created_at, t.post_id,
            u.id as receiver_id, u.name as receiver_name, u.username as receiver_username, u.profile_picture as receiver_profile_picture,
            p.content as post_content
@@ -51,7 +51,7 @@ export const getTipsSent = async (userId, limit = 20, offset = 0) => {
 
 // Get total tips received on a specific post
 export const getTipsTotalByPostId = async (postId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT COALESCE(SUM(amount), 0) as total
     FROM tips
     WHERE post_id = ${postId}

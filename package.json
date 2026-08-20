@@ -18,6 +18,8 @@
   "description": "",
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "@upstash/redis": "^1.36.3",
     "backend": "file:",
     "bcrypt": "^5.1.1",
@@ -41,7 +43,10 @@
     "node-pg-migrate": "^8.0.4",
     "nodemailer": "^6.9.16",
     "nodemon": "^3.1.11",
-    "pg": "^8.13.1",
+    "pg": "^8.23.0",
     "sequelize": "^6.37.5"
+  },
+  "devDependencies": {
+    "prisma": "^7.9.1"
   }
 }

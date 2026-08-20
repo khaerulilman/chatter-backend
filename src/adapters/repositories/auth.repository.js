@@ -2,19 +2,19 @@ import db from "../../frameworks/database/db.js";
 
 // Check if username already exists in database
 export const findUserByUsername = async (username) => {
-  const user = await db`SELECT id FROM users WHERE username = ${username}`;
+  const user = await db.$queryRaw`SELECT id FROM users WHERE username = ${username}`;
   return user;
 };
 
 // Check if email already exists in database
 export const findUserByEmail = async (email) => {
-  const user = await db`SELECT id FROM users WHERE email = ${email}`;
+  const user = await db.$queryRaw`SELECT id FROM users WHERE email = ${email}`;
   return user;
 };
 
 // Find user by email with all data
 export const findUserFullByEmail = async (email) => {
-  const user = await db`
+  const user = await db.$queryRaw`
     SELECT id, name, username, email, profile_picture, header_picture, created_at, password 
     FROM users WHERE email = ${email}
   `;
@@ -23,7 +23,7 @@ export const findUserFullByEmail = async (email) => {
 
 // Find user by ID
 export const findUserById = async (userId) => {
-  const user = await db`SELECT id, token FROM users WHERE id = ${userId}`;
+  const user = await db.$queryRaw`SELECT id, token FROM users WHERE id = ${userId}`;
   return user;
 };
 
@@ -38,8 +38,8 @@ export const insertUser = async (
   header_picture,
   isVerified = true,
 ) => {
-  await db`
-    INSERT INTO users (id, name, email, username, password, profile_picture, header_picture, isVerified)
+  await db.$queryRaw`
+    INSERT INTO users (id, name, email, username, password, profile_picture, header_picture, isverified)
     VALUES (${id}, ${name}, ${email}, ${username}, ${password}, ${profile_picture}, ${header_picture}, ${isVerified})
     ON CONFLICT (id) DO NOTHING
   `;
@@ -47,7 +47,7 @@ export const insertUser = async (
 
 // Update user token
 export const updateUserToken = async (userId, token) => {
-  await db`
+  await db.$queryRaw`
     UPDATE users
     SET token = ${token}
     WHERE id = ${userId}
@@ -56,7 +56,7 @@ export const updateUserToken = async (userId, token) => {
 
 // Update user password by email
 export const updateUserPassword = async (email, hashedPassword) => {
-  await db`
+  await db.$queryRaw`
     UPDATE users
     SET password = ${hashedPassword}
     WHERE email = ${email}
@@ -67,7 +67,7 @@ export const updateUserPassword = async (email, hashedPassword) => {
 
 // Insert a new refresh token
 export const insertRefreshToken = async (id, userId, token, expiresAt) => {
-  await db`
+  await db.$queryRaw`
     INSERT INTO refresh_tokens (id, user_id, token, expires_at)
     VALUES (${id}, ${userId}, ${token}, ${expiresAt})
   `;
@@ -75,7 +75,7 @@ export const insertRefreshToken = async (id, userId, token, expiresAt) => {
 
 // Find refresh token by token string
 export const findRefreshToken = async (token) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT id, user_id, token, expires_at
     FROM refresh_tokens
     WHERE token = ${token}
@@ -85,7 +85,7 @@ export const findRefreshToken = async (token) => {
 
 // Find user by ID with full profile data (for refresh)
 export const findUserFullById = async (userId) => {
-  const user = await db`
+  const user = await db.$queryRaw`
     SELECT id, name, username, email, profile_picture, header_picture, created_at
     FROM users WHERE id = ${userId}
   `;
@@ -94,15 +94,15 @@ export const findUserFullById = async (userId) => {
 
 // Delete a specific refresh token
 export const deleteRefreshToken = async (token) => {
-  await db`DELETE FROM refresh_tokens WHERE token = ${token}`;
+  await db.$queryRaw`DELETE FROM refresh_tokens WHERE token = ${token}`;
 };
 
 // Delete all refresh tokens for a user (logout all sessions)
 export const deleteRefreshTokensByUserId = async (userId) => {
-  await db`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
+  await db.$queryRaw`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
 };
 
 // Delete expired refresh tokens (cleanup)
 export const deleteExpiredRefreshTokens = async () => {
-  await db`DELETE FROM refresh_tokens WHERE expires_at < NOW()`;
+  await db.$queryRaw`DELETE FROM refresh_tokens WHERE expires_at < NOW()`;
 };

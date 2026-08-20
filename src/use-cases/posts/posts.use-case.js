@@ -77,16 +77,17 @@ export const makePostUseCases = ({
     let mediaUrls = null;
     let mediaFileids = null;
     if (files && files.media && files.media.length > 0) {
-      const uploadPromises = files.media.map((mediaFile) =>
-        imageService.upload({
+      mediaUrls = [];
+      mediaFileids = [];
+      for (const mediaFile of files.media) {
+        const result = await imageService.upload({
           file: mediaFile.buffer,
           fileName: mediaFile.originalname,
           folder: "/posts/media",
-        }),
-      );
-      const results = await Promise.all(uploadPromises);
-      mediaUrls = results.map((r) => r.url);
-      mediaFileids = results.map((r) => r.fileId);
+        });
+        mediaUrls.push(result.url);
+        mediaFileids.push(result.fileId);
+      }
       mediaUrl = mediaUrls[0];
     }
 
@@ -98,16 +99,17 @@ export const makePostUseCases = ({
       hiddenMediaFiles &&
       hiddenMediaFiles.length > 0
     ) {
-      const hiddenUploadPromises = hiddenMediaFiles.map((mediaFile) =>
-        imageService.upload({
+      hiddenMediaUrls = [];
+      hiddenMediaFileids = [];
+      for (const mediaFile of hiddenMediaFiles) {
+        const hiddenResult = await imageService.upload({
           file: mediaFile.buffer,
           fileName: mediaFile.originalname,
           folder: "/posts/hidden-media",
-        }),
-      );
-      const hiddenResults = await Promise.all(hiddenUploadPromises);
-      hiddenMediaUrls = hiddenResults.map((r) => r.url);
-      hiddenMediaFileids = hiddenResults.map((r) => r.fileId);
+        });
+        hiddenMediaUrls.push(hiddenResult.url);
+        hiddenMediaFileids.push(hiddenResult.fileId);
+      }
     }
 
     const hasRestriction = isFollowerOnly || isPaid;
@@ -239,10 +241,12 @@ export const makePostUseCases = ({
   const getPurchaseActivityService = async (userId, page = 1, limit = 20) => {
     const offset = (page - 1) * limit;
 
-    const [received, sent] = await Promise.all([
-      postRepository.getPurchasesReceived(userId, limit, offset),
-      postRepository.getPurchasesSent(userId, limit, offset),
-    ]);
+    const received = await postRepository.getPurchasesReceived(
+      userId,
+      limit,
+      offset,
+    );
+    const sent = await postRepository.getPurchasesSent(userId, limit, offset);
 
     return { received, sent };
   };

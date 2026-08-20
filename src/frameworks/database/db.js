@@ -1,17 +1,12 @@
-import dotenv from "dotenv";
-import { neon } from "@neondatabase/serverless";
+import dotenv from 'dotenv';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../generated/prisma/client.ts';
 
 dotenv.config();
 
-const db = neon(process.env.DATABASE_URL);
-
-(async () => {
-  try {
-    const result = await db`SELECT version()`;
-    console.log("PostgreSQL connected:", result[0].version);
-  } catch (err) {
-    console.error("PostgreSQL connection error:", err);
-  }
-})();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL
+});
+const db = new PrismaClient({ adapter });
 
 export default db;

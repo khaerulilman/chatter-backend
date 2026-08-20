@@ -11,13 +11,21 @@ const getCountCacheKey = (postId, version) =>
 const getLikedCacheKey = (userId, postId, version) =>
   `likes:liked:${userId}:${postId}:v${version}`;
 
-const runInBackground = (promise, taskName) => {
-  void promise.catch((err) => {
-    console.error(
-      `[likes.repository] background task failed: ${taskName}`,
-      err,
-    );
-  });
+const runInBackground = (task, taskName) => {
+  (async () => {
+    try {
+      if (typeof task === "function") {
+        await task();
+      } else {
+        await task;
+      }
+    } catch (err) {
+      console.error(
+        `[likes.repository] background task failed: ${taskName}`,
+        err,
+      );
+    }
+  })();
 };
 
 const getPostCacheVersion = async (postId) => {
@@ -42,11 +50,15 @@ const invalidateLikeCaches = async (userId, postId) => {
 };
 
 const scheduleDelayedInvalidation = (userId, postId) => {
-  const timer = setTimeout(() => {
-    runInBackground(
-      invalidateLikeCaches(userId, postId),
-      "delayed like cache invalidation",
-    );
+  const timer = setTimeout(async () => {
+    try {
+      await invalidateLikeCaches(userId, postId);
+    } catch (err) {
+      console.error(
+        "[likes.repository] background task failed: delayed like cache invalidation",
+        err,
+      );
+    }
   }, DELAYED_INVALIDATION_MS);
 
   if (typeof timer.unref === "function") {
@@ -55,14 +67,14 @@ const scheduleDelayedInvalidation = (userId, postId) => {
 };
 
 const findLike = async (userId, postId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT * FROM likes WHERE user_id = ${userId} AND post_id = ${postId}
   `;
   return result.length > 0 ? result[0] : null;
 };
 
 const deleteLike = async (userId, postId) => {
-  await db`DELETE FROM likes WHERE user_id = ${userId} AND post_id = ${postId}`;
+  await db.$queryRaw`DELETE FROM likes WHERE user_id = ${userId} AND post_id = ${postId}`;
   await bumpPostCacheVersion(postId);
   runInBackground(
     invalidateLikeCaches(userId, postId),
@@ -73,9 +85,9 @@ const deleteLike = async (userId, postId) => {
 
 const createLike = async (likeData) => {
   const { id, user_id, post_id, created_at } = likeData;
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO likes (id, user_id, post_id, created_at)
-    VALUES (${id}, ${user_id}, ${post_id}, ${created_at})
+    VALUES (${id}::uuid, ${user_id}, ${post_id}, ${created_at})
     RETURNING *
   `;
 
@@ -94,10 +106,10 @@ const countLikesByPostId = async (postId) => {
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) return cached;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT COUNT(*) as count FROM likes WHERE post_id = ${postId}
   `;
-  const count = parseInt(result[0].count);
+  const count = parseInt(String(result[0].count));
 
   runInBackground(
     cacheService.set(cacheKey, count, CACHE_TTL),
@@ -112,7 +124,7 @@ const isPostLikedByUser = async (userId, postId) => {
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) return cached;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT 1 FROM likes WHERE user_id = ${userId} AND post_id = ${postId} LIMIT 1
   `;
   const isLiked = result.length > 0;

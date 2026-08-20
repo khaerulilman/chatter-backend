@@ -6,20 +6,27 @@ dotenv.config();
 const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
 const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 const useUpstash = Boolean(upstashUrl && upstashToken);
-const UPSTASH_TIMEOUT_MS = Number(process.env.UPSTASH_TIMEOUT_MS || 700);
+
 const UPSTASH_FAILURE_THRESHOLD = Number(
   process.env.UPSTASH_FAILURE_THRESHOLD || 3,
 );
 const UPSTASH_RECOVERY_MS = Number(process.env.UPSTASH_RECOVERY_MS || 60000);
+
+const DEFAULT_TTL_SECONDS = 300;
+const INCR_MEMORY_TTL_SECONDS = 86400;
 
 let redis;
 
 const parseTtl = (args) => {
   if (args.length >= 2 && args[0] === "EX") {
     const ttl = Number(args[1]);
-    return Number.isFinite(ttl) && ttl > 0 ? ttl : 300;
+
+    if (Number.isFinite(ttl) && ttl > 0) {
+      return ttl;
+    }
   }
-  return 300;
+
+  return DEFAULT_TTL_SECONDS;
 };
 
 const parseScanPattern = (args) => {
@@ -28,15 +35,17 @@ const parseScanPattern = (args) => {
       return args[i + 1];
     }
   }
+
   return "*";
 };
 
 const globToRegex = (pattern) => {
-  const escaped = pattern
+  const escapedPattern = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*/g, ".*")
     .replace(/\?/g, ".");
-  return new RegExp(`^${escaped}$`);
+
+  return new RegExp(`^${escapedPattern}$`);
 };
 
 const createMemoryRedis = () => {
@@ -44,7 +53,10 @@ const createMemoryRedis = () => {
 
   const getEntry = (key) => {
     const item = memory.get(key);
-    if (!item) return null;
+
+    if (!item) {
+      return null;
+    }
 
     if (item.expiresAt && item.expiresAt <= Date.now()) {
       memory.delete(key);
@@ -55,38 +67,60 @@ const createMemoryRedis = () => {
   };
 
   const deleteKeys = (...keys) => {
-    let deleted = 0;
+    let deletedCount = 0;
+
     for (const key of keys) {
-      if (memory.delete(key)) deleted += 1;
+      const deleted = memory.delete(key);
+
+      if (deleted) {
+        deletedCount += 1;
+      }
     }
-    return deleted;
+
+    return deletedCount;
   };
 
   return {
     status: "ready",
     provider: "memory",
+
     get: async (key) => {
       const item = getEntry(key);
-      return item ? item.value : null;
+
+      if (!item) {
+        return null;
+      }
+
+      return item.value;
     },
+
     set: async (key, value, ...args) => {
       const ttl = parseTtl(args);
+
       memory.set(key, {
         value,
         expiresAt: Date.now() + ttl * 1000,
       });
+
       return "OK";
     },
+
     del: async (...keys) => {
       return deleteKeys(...keys);
     },
+
     unlink: async (...keys) => {
       return deleteKeys(...keys);
     },
+
     incr: async (key) => {
       const currentEntry = getEntry(key);
       const currentValue = Number(currentEntry?.value ?? "0");
-      const nextValue = Number.isFinite(currentValue) ? currentValue + 1 : 1;
+
+      let nextValue = 1;
+      if (Number.isFinite(currentValue)) {
+        nextValue = currentValue + 1;
+      }
 
       memory.set(key, {
         value: String(nextValue),
@@ -95,46 +129,41 @@ const createMemoryRedis = () => {
 
       return nextValue;
     },
+
     scan: async (cursor, ...args) => {
       const pattern = parseScanPattern(args);
       const regex = globToRegex(pattern);
       const keys = [];
 
       for (const key of memory.keys()) {
-        if (getEntry(key) && regex.test(key)) {
+        const item = getEntry(key);
+
+        if (item && regex.test(key)) {
           keys.push(key);
         }
       }
 
-      return [cursor === "0" ? "0" : String(cursor), keys];
+      if (cursor === "0") {
+        return ["0", keys];
+      }
+
+      return [String(cursor), keys];
     },
+
     flushdb: async () => {
       memory.clear();
       return "OK";
     },
-    quit: async () => Promise.resolve(),
+
+    quit: async () => {
+      return undefined;
+    },
   };
 };
 
 const memoryRedis = createMemoryRedis();
 
-const withTimeout = async (action, operationName) => {
-  return Promise.race([
-    action(),
-    new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(
-          new Error(
-            `Upstash ${operationName} timeout after ${UPSTASH_TIMEOUT_MS}ms`,
-          ),
-        );
-      }, UPSTASH_TIMEOUT_MS);
-    }),
-  ]);
-};
-
 if (useUpstash) {
-  // Use Upstash Redis with automatic fallback to in-memory cache on failures.
   const client = new Redis({
     url: upstashUrl,
     token: upstashToken,
@@ -145,9 +174,13 @@ if (useUpstash) {
   let lastFailureAt = 0;
 
   const canUseUpstash = () => {
-    if (!upstashDisabled) return true;
+    if (!upstashDisabled) {
+      return true;
+    }
 
-    if (Date.now() - lastFailureAt >= UPSTASH_RECOVERY_MS) {
+    const disabledFor = Date.now() - lastFailureAt;
+
+    if (disabledFor >= UPSTASH_RECOVERY_MS) {
       upstashDisabled = false;
       failureCount = 0;
       return true;
@@ -156,11 +189,15 @@ if (useUpstash) {
     return false;
   };
 
-  const recordFailure = (operationName, err) => {
+  const markUpstashSuccess = () => {
+    failureCount = 0;
+  };
+
+  const markUpstashFailure = (operationName, error) => {
     failureCount += 1;
     lastFailureAt = Date.now();
 
-    console.error(`Upstash ${operationName} error:`, err.message);
+    console.error(`Upstash ${operationName} error:`, error.message);
 
     if (failureCount >= UPSTASH_FAILURE_THRESHOLD) {
       upstashDisabled = true;
@@ -170,120 +207,173 @@ if (useUpstash) {
     }
   };
 
-  const runUpstash = async (operationName, action) => {
-    if (!canUseUpstash()) {
-      return { ok: false };
-    }
-
-    try {
-      const value = await withTimeout(action, operationName);
-      failureCount = 0;
-      return { ok: true, value };
-    } catch (err) {
-      recordFailure(operationName, err);
-      return { ok: false };
-    }
-  };
-
   redis = {
     status: "ready",
     provider: "upstash-with-fallback",
+
     get: async (key) => {
-      const upstashResult = await runUpstash("GET", () => client.get(key));
+      if (canUseUpstash()) {
+        try {
+          const value = await client.get(key);
+          markUpstashSuccess();
 
-      if (upstashResult.ok) {
-        const value = upstashResult.value;
-        if (value === null || value === undefined) return null;
+          if (value === null || value === undefined) {
+            return null;
+          }
 
-        // Upstash auto-deserializes JSON, so re-serialize to string
-        // so cache.service.js can JSON.parse() it as expected
-        const normalized =
-          typeof value === "string" ? value : JSON.stringify(value);
-        await memoryRedis.set(key, normalized, "EX", 300);
-        return normalized;
+          // Upstash may auto-deserialize JSON. The cache service expects a
+          // string so it can call JSON.parse() consistently.
+          let normalizedValue = value;
+          if (typeof value !== "string") {
+            normalizedValue = JSON.stringify(value);
+          }
+
+          await memoryRedis.set(key, normalizedValue, "EX", DEFAULT_TTL_SECONDS);
+          return normalizedValue;
+        } catch (error) {
+          markUpstashFailure("GET", error);
+        }
       }
 
-      return memoryRedis.get(key);
+      return await memoryRedis.get(key);
     },
+
     set: async (key, value, ...args) => {
       const ttl = parseTtl(args);
+
       await memoryRedis.set(key, value, "EX", ttl);
 
-      const upstashResult = await runUpstash("SET", () =>
-        client.set(key, value, { ex: ttl }),
-      );
-
-      return upstashResult.ok ? upstashResult.value : "OK";
-    },
-    del: async (...keys) => {
-      if (!keys.length) return 0;
-
-      const memoryDeleted = await memoryRedis.del(...keys);
-      const upstashResult = await runUpstash("DEL", () => {
-        if (keys.length === 1) return client.del(keys[0]);
-        return client.del(keys);
-      });
-
-      if (upstashResult.ok) {
-        return upstashResult.value;
-      }
-
-      return memoryDeleted;
-    },
-    unlink: async (...keys) => {
-      if (!keys.length) return 0;
-
-      const memoryDeleted = await memoryRedis.unlink(...keys);
-
-      const upstashResult = await runUpstash("UNLINK", () => {
-        if (typeof client.unlink === "function") {
-          if (keys.length === 1) return client.unlink(keys[0]);
-          return client.unlink(keys);
+      if (canUseUpstash()) {
+        try {
+          const result = await client.set(key, value, { ex: ttl });
+          markUpstashSuccess();
+          return result;
+        } catch (error) {
+          markUpstashFailure("SET", error);
         }
-
-        if (keys.length === 1) return client.del(keys[0]);
-        return client.del(keys);
-      });
-
-      if (upstashResult.ok) {
-        return upstashResult.value;
       }
 
-      return memoryDeleted;
+      return "OK";
     },
+
+    del: async (...keys) => {
+      if (keys.length === 0) {
+        return 0;
+      }
+
+      const memoryDeletedCount = await memoryRedis.del(...keys);
+
+      if (canUseUpstash()) {
+        try {
+          const deletedCount =
+            keys.length === 1
+              ? await client.del(keys[0])
+              : await client.del(keys);
+
+          markUpstashSuccess();
+          return deletedCount;
+        } catch (error) {
+          markUpstashFailure("DEL", error);
+        }
+      }
+
+      return memoryDeletedCount;
+    },
+
+    unlink: async (...keys) => {
+      if (keys.length === 0) {
+        return 0;
+      }
+
+      const memoryDeletedCount = await memoryRedis.unlink(...keys);
+
+      if (canUseUpstash()) {
+        try {
+          let deletedCount;
+
+          if (typeof client.unlink === "function") {
+            deletedCount =
+              keys.length === 1
+                ? await client.unlink(keys[0])
+                : await client.unlink(keys);
+          } else {
+            deletedCount =
+              keys.length === 1
+                ? await client.del(keys[0])
+                : await client.del(keys);
+          }
+
+          markUpstashSuccess();
+          return deletedCount;
+        } catch (error) {
+          markUpstashFailure("UNLINK", error);
+        }
+      }
+
+      return memoryDeletedCount;
+    },
+
     incr: async (key) => {
       const memoryValue = await memoryRedis.incr(key);
-      const upstashResult = await runUpstash("INCR", () => client.incr(key));
 
-      if (upstashResult.ok) {
-        const normalized = Number(upstashResult.value);
-        if (Number.isFinite(normalized)) {
-          await memoryRedis.set(key, String(normalized), "EX", 86400);
-          return normalized;
+      if (canUseUpstash()) {
+        try {
+          const upstashValue = await client.incr(key);
+          markUpstashSuccess();
+
+          const normalizedValue = Number(upstashValue);
+
+          if (Number.isFinite(normalizedValue)) {
+            await memoryRedis.set(
+              key,
+              String(normalizedValue),
+              "EX",
+              INCR_MEMORY_TTL_SECONDS,
+            );
+            return normalizedValue;
+          }
+        } catch (error) {
+          markUpstashFailure("INCR", error);
         }
       }
 
       return memoryValue;
     },
+
     scan: async (cursor, ...args) => {
       const pattern = parseScanPattern(args);
-      const upstashResult = await runUpstash("SCAN", () =>
-        client.keys(pattern),
-      );
 
-      if (upstashResult.ok) {
-        return ["0", upstashResult.value || []];
+      if (canUseUpstash()) {
+        try {
+          const keys = await client.keys(pattern);
+          markUpstashSuccess();
+          return ["0", keys || []];
+        } catch (error) {
+          markUpstashFailure("SCAN", error);
+        }
       }
 
-      return memoryRedis.scan(cursor, ...args);
+      return await memoryRedis.scan(cursor, ...args);
     },
+
     flushdb: async () => {
       await memoryRedis.flushdb();
-      const upstashResult = await runUpstash("FLUSHDB", () => client.flushdb());
-      return upstashResult.ok ? upstashResult.value : "OK";
+
+      if (canUseUpstash()) {
+        try {
+          const result = await client.flushdb();
+          markUpstashSuccess();
+          return result;
+        } catch (error) {
+          markUpstashFailure("FLUSHDB", error);
+        }
+      }
+
+      return "OK";
     },
+
     quit: async () => {
-      return Promise.resolve();
+      return undefined;
     },
   };
 

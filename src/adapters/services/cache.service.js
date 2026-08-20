@@ -2,16 +2,8 @@ import redis from "../../frameworks/redis/redis.js";
 
 const DEFAULT_TTL = 300; // 5 minutes in seconds
 
-/**
- * Check if Redis is connected and available
- */
 const isAvailable = () => redis.status === "ready";
 
-/**
- * Get cached data by key
- * @param {string} key - Cache key
- * @returns {any|null} Parsed data or null if not found/unavailable
- */
 const get = async (key) => {
   if (!isAvailable()) return null;
 
@@ -24,12 +16,6 @@ const get = async (key) => {
   }
 };
 
-/**
- * Set data in cache
- * @param {string} key - Cache key
- * @param {any} data - Data to cache (will be JSON.stringified)
- * @param {number} ttl - Time to live in seconds (default: 300)
- */
 const set = async (key, data, ttl = DEFAULT_TTL) => {
   if (!isAvailable()) return;
 
@@ -40,10 +26,6 @@ const set = async (key, data, ttl = DEFAULT_TTL) => {
   }
 };
 
-/**
- * Delete a specific cache key
- * @param {string} key - Cache key to delete
- */
 const del = async (key) => {
   if (!isAvailable()) return;
 
@@ -54,10 +36,6 @@ const del = async (key) => {
   }
 };
 
-/**
- * Delete all keys matching a pattern
- * @param {string} pattern - Pattern to match (e.g., "posts:*")
- */
 const delByPattern = async (pattern) => {
   if (!isAvailable()) return;
 
@@ -85,12 +63,6 @@ const delByPattern = async (pattern) => {
   }
 };
 
-/**
- * Atomically increment numeric cache value.
- * @param {string} key - Cache key
- * @param {number|null} ttl - Optional TTL in seconds to refresh key expiry
- * @returns {number|null} Incremented value or null when unavailable/error
- */
 const incr = async (key, ttl = null) => {
   if (!isAvailable()) return null;
 
@@ -108,9 +80,6 @@ const incr = async (key, ttl = null) => {
   }
 };
 
-/**
- * Flush all cache
- */
 const flush = async () => {
   if (!isAvailable()) return;
 

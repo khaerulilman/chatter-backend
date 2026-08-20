@@ -8,7 +8,7 @@ const findCommentsByPostId = async (postId) => {
   const cached = await cacheService.get(cacheKey);
   if (cached) return cached;
 
-  const comments = await db`
+  const comments = await db.$queryRaw`
     SELECT 
       comments.id,
       comments.content,
@@ -28,7 +28,7 @@ const findCommentsByPostId = async (postId) => {
 
 const createComment = async (commentData) => {
   const { id, user_id, post_id, content, created_at } = commentData;
-  const result = await db`
+  const result = await db.$queryRaw`
     INSERT INTO comments (id, user_id, post_id, content, created_at) 
     VALUES (${id}, ${user_id}, ${post_id}, ${content}, ${created_at})
     RETURNING *
@@ -41,12 +41,12 @@ const createComment = async (commentData) => {
 };
 
 const findCommentById = async (commentId) => {
-  const result = await db`SELECT * FROM comments WHERE id = ${commentId}`;
+  const result = await db.$queryRaw`SELECT * FROM comments WHERE id = ${commentId}`;
   return result.length > 0 ? result[0] : null;
 };
 
 const getCommentByIdWithUser = async (commentId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT 
       comments.id,
       comments.content,
@@ -64,7 +64,7 @@ const getCommentByIdWithUser = async (commentId) => {
 
 const deleteCommentById = async (commentId) => {
   const result =
-    await db`DELETE FROM comments WHERE id = ${commentId} RETURNING *`;
+    await db.$queryRaw`DELETE FROM comments WHERE id = ${commentId} RETURNING *`;
 
   if (result.length > 0) {
     const postId = result[0].post_id;
@@ -80,10 +80,10 @@ const countCommentsByPostId = async (postId) => {
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) return cached;
 
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT COUNT(*) as count FROM comments WHERE post_id = ${postId}
   `;
-  const count = parseInt(result[0].count);
+  const count = parseInt(String(result[0].count));
 
   await cacheService.set(cacheKey, count, CACHE_TTL);
   return count;

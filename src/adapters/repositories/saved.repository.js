@@ -1,14 +1,14 @@
 import db from "../../frameworks/database/db.js";
 
 const findSavedPost = async (userId, postId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT * FROM saved_posts WHERE user_id = ${userId} AND post_id = ${postId}
   `;
   return result.length > 0 ? result[0] : null;
 };
 
 const createSavedPost = async (userId, postId) => {
-  return await db`
+  return await db.$queryRaw`
     INSERT INTO saved_posts (user_id, post_id)
     VALUES (${userId}, ${postId})
     RETURNING *
@@ -16,11 +16,11 @@ const createSavedPost = async (userId, postId) => {
 };
 
 const deleteSavedPost = async (userId, postId) => {
-  await db`DELETE FROM saved_posts WHERE user_id = ${userId} AND post_id = ${postId}`;
+  await db.$queryRaw`DELETE FROM saved_posts WHERE user_id = ${userId} AND post_id = ${postId}`;
 };
 
 const findAllSavedPostsByUserId = async (userId, limit, offset) => {
-  return await db`
+  return await db.$queryRaw`
     SELECT p.id, p.content, p.media_url, p.media_urls, p.created_at,
            p.is_follower_only, p.hidden_content, p.hidden_media_urls,
            p.is_paid, p.price, p.comments_disabled,
@@ -42,7 +42,7 @@ const findAllSavedPostsByUserId = async (userId, limit, offset) => {
 };
 
 const isSavedByUser = async (userId, postId) => {
-  const result = await db`
+  const result = await db.$queryRaw`
     SELECT 1 FROM saved_posts WHERE user_id = ${userId} AND post_id = ${postId} LIMIT 1
   `;
   return result.length > 0;
